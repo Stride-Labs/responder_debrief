@@ -11,6 +11,7 @@ import { DisclaimerFooter } from './DisclaimerFooter';
 import { HREF_DIRECTORY } from '../app/router';
 import { useHealth, useImsr, useMasterCatalog, useWeatherRuns } from '../api/queries';
 import { formatBytes, formatRelative } from '../utils/format';
+import { recentOutages } from '../utils/health';
 
 const REPO = 'pasha594/responder_debrief';
 
@@ -135,6 +136,7 @@ export function HealthView() {
 
   const m = health?.mirror;
   const c = health?.catalogs;
+  const outages = recentOutages(health?.history, Date.now());
 
   return (
     <div className="rd-health">
@@ -188,9 +190,10 @@ export function HealthView() {
         />
         <FreshnessRow
           label="FTP mirror heartbeat"
-          iso={m?.finished_at}
+          iso={m?.ok ? m.finished_at : undefined}
           okMs={2.5 * HOUR}
           warnMs={5 * HOUR}
+          detail={m?.last_failure ? 'latest run failed, see below' : undefined}
         />
         <FreshnessRow
           label="Sit report (IMSR)"
@@ -204,10 +207,21 @@ export function HealthView() {
       <section className="rd-section">
         <h3 className="rd-section-title">
           Last mirror run
-          <span className="rd-title-meta">{m ? formatRelative(m.finished_at) : 'no heartbeat yet'}</span>
+          <span className="rd-title-meta">
+            {m ? (m.ok ? formatRelative(m.finished_at) : 'never completed') : 'no heartbeat yet'}
+          </span>
         </h3>
         {m ? (
           <>
+            {m.last_failure && (
+              <div className="rd-health-alert" role="status">
+                <strong>Latest run failed {formatRelative(m.last_failure.finished_at)}</strong>
+                {m.last_failure.note ? `: ${m.last_failure.note}.` : '.'}
+                {m.ok
+                  ? ` Maps and IR data are as of ${formatRelative(m.finished_at)}; the hourly run retries automatically.`
+                  : ' No mirror run has completed yet.'}
+              </div>
+            )}
             <div className="rd-stats-strip">
               <div className="rd-stat">
                 <span className="rd-stat-value">{m.candidates}</span>
@@ -237,6 +251,27 @@ export function HealthView() {
           </>
         ) : (
           <div className="rd-empty">Publishes after the next mirror run.</div>
+        )}
+      </section>
+
+      <section className="rd-section">
+        <h3 className="rd-section-title">
+          Recorded outages
+          <span className="rd-title-meta">last 7 days</span>
+        </h3>
+        {outages.length === 0 ? (
+          <div className="rd-empty">None recorded in the last 7 days.</div>
+        ) : (
+          outages.map((o, i) => (
+            <div key={i} className="rd-health-row">
+              <Dot grade="late" />
+              <span className="rd-health-row-label">{formatRelative(o.at)}</span>
+              <span className="rd-health-row-value">
+                {o.job === 'mirror' ? 'FTP mirror' : o.job === 'catalogs' ? 'Catalogs' : o.job}
+                {o.note ? ` · ${o.note}` : ''}
+              </span>
+            </div>
+          ))
         )}
       </section>
 

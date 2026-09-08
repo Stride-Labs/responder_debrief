@@ -18,6 +18,7 @@ from types import SimpleNamespace
 from collections import Counter
 from datetime import datetime
 from pathlib import Path
+from urllib.parse import urlparse
 
 import httpx
 
@@ -1087,6 +1088,34 @@ def _ir_backlog(state: dict, log) -> set[str]:
     return touched
 
 
+def _ftp_outage_entry(job_started: str, exc: BaseException) -> dict:
+    """Health failure record for a run that never reached the FTP host."""
+    host = urlparse(config.FTP_BASE).netloc or config.FTP_BASE
+    detail = f"{type(exc).__name__}: {exc}".strip().rstrip(":")
+    return {
+        "started_at": job_started,
+        "finished_at": cat.now_iso(),
+        "note": f"FTP unreachable ({host}): {detail}",
+        "error": "ftp_unreachable",
+    }
+
+
+def _zero_mirror_entry() -> dict:
+    """Shape of a mirror heartbeat with nothing done — seeds the section when
+    the very first run in a deployment fails (the page needs the fields)."""
+    return {
+        "catalog_version": 0,
+        "candidates": 0,
+        "unchanged_skips": 0,
+        "mirrored_incidents": 0,
+        "files_downloaded": 0,
+        "bytes_downloaded": 0,
+        "failed_incidents": [],
+        "deadline_hit": False,
+        "gdal_available": geopdf.gdal_available(),
+    }
+
+
 def cmd_sync_incidents(args) -> int:
     job_started = cat.now_iso()
     storage = make_storage(args.dry_run, args.out)
@@ -1113,7 +1142,20 @@ def cmd_sync_incidents(args) -> int:
             state["incidents"][inc_key]["dir_mtime"] = None
 
         log("[incidents] crawling FTP year roots for candidate dirs ...")
-        cands = _collect_candidates(client, args, fires)
+        try:
+            cands = _collect_candidates(client, args, fires)
+        except httpx.TransportError as exc:
+            # The FTP host itself is down: connect/read timeouts that outlive
+            # the retry budget before a single listing arrives. There is
+            # nothing to mirror, so fail the run — but record the outage on
+            # the heartbeat first, so /health can say WHY the maps are stale
+            # (a bare crash publishes nothing and looks like a scheduler gap).
+            log(f"[incidents] FTP unreachable, aborting run: "
+                f"{type(exc).__name__}: {exc}")
+            health.publish_failure(storage, "mirror",
+                                   _ftp_outage_entry(job_started, exc),
+                                   defaults=_zero_mirror_entry(), log=log)
+            return 1
         priority = [x for x in (args.priority_fires or "").split(",") if x.strip()]
         cands = _rank_candidates(cands, fires, priority)
         unchanged_skips = 0

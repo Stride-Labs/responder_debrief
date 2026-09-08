@@ -425,6 +425,16 @@ export interface HealthWeatherRun {
   expected: number;
 }
 
+/** A run that did no work (e.g. the FTP host was down). Present on a job's
+ * section only while the LATEST outcome is a failure — the next completed
+ * run replaces the section and clears it. */
+export interface HealthFailure {
+  started_at: string | null;
+  finished_at: string;
+  note: string | null;
+  error: string | null;
+}
+
 export interface HealthCatalogsEntry {
   started_at: string;
   finished_at: string;
@@ -442,6 +452,7 @@ export interface HealthCatalogsEntry {
     runs: HealthWeatherRun[];
   };
   imsr: { published: boolean; matched_fires: number };
+  last_failure?: HealthFailure | null;
 }
 
 export interface HealthMirrorEntry {
@@ -458,6 +469,7 @@ export interface HealthMirrorEntry {
   failed_incidents: string[];
   deadline_hit: boolean;
   gdal_available: boolean;
+  last_failure?: HealthFailure | null;
 }
 
 export interface HealthDoc {
