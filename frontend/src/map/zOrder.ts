@@ -8,6 +8,13 @@ import type { Map as MlMap } from 'maplibre-gl';
 /** Bottom → top. Layer ids owned by our layer managers (prefix rd-). */
 export const RD_LAYER_ORDER = [
   // rasters (below basemap labels)
+  // Live beats static, top down. The incident-map sheet is an opaque scan, so
+  // it floors the group instead of blanking everything else at full opacity;
+  // weather rides over the spread forecast for the same reason — a product
+  // toggled on to read current conditions should not paint underneath it.
+  // Per-layer opacity is the escape hatch when you want the lower one.
+  'rd-incident-map',
+  'rd-spread-forecast',
   'rd-weather-tmpf-a', 'rd-weather-tmpf-b',
   'rd-weather-rh-a', 'rd-weather-rh-b',
   'rd-weather-ws-a', 'rd-weather-ws-b',
@@ -21,8 +28,6 @@ export const RD_LAYER_ORDER = [
   'rd-weather-apcp01-a', 'rd-weather-apcp01-b',
   'rd-weather-apcptot-a', 'rd-weather-apcptot-b',
   'rd-traffic',
-  'rd-incident-map',
-  'rd-spread-forecast',
   'rd-national-perimeters',
   // ── basemap symbol layers sit here ──
   // vectors above labels
