@@ -1255,8 +1255,10 @@
 
 /* tablet: narrower sidebar overlay */
 @media (min-width: 768px) and (max-width: 1023px) {
-  .rd-sidebar {
-    width: 320px;
+  /* narrower panel; everything keyed to the token (sidebar, legend bar,
+     map toolbar bound) follows */
+  .rd-app {
+    --sidebar-w: 320px;
   }
   .rd-sidebar--collapsed {
     width: 48px;
@@ -1769,11 +1771,19 @@
   position: absolute;
   top: 12px;
   left: 12px;
-  right: auto;
+  /* Bounded by the sidebar so nothing paints over the panel: when the row
+     no longer fits (tablet, narrow desktop) the search bar wraps to a
+     second line under the back pill and basemap pills. */
+  right: calc(var(--sidebar-w) + 12px);
   z-index: 28;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
+}
+/* Collapsed sidebar is a 48px rail: the row has its room back. */
+.rd-app:has(.rd-sidebar--collapsed) .rd-map-toolbar {
+  right: 60px;
 }
 .rd-sd-control {
   flex: 0 0 auto;
@@ -1784,6 +1794,7 @@
 }
 @media (max-width: 767px) {
   .rd-map-toolbar {
+    right: auto; /* no sidebar here (bottom sheet) */
     flex-direction: column;
     align-items: flex-start;
     gap: 6px;

@@ -69,7 +69,7 @@ as `tiles: [template], tileSize: 512`. Legends: `request=GetLegendGraphic&format
 
 - `MapRoot.tsx` owns the map; layer modules are imperative `{mount, update, unmount}`; one zustand subscription (`useMapLayerSync`) diffs and dispatches. All our ids prefixed `rd-`.
 - Style swap: `map.setStyle(next, { transformStyle })` re-merging `rd-` sources/layers; `styledata` re-asserts z-order.
-- Z-order (bottom→top): basemap fills < **weather rasters < incident map < spread forecast** (inserted before first symbol layer) < basemap labels < IR heat < perimeter fill/line < hotspots < pins.
+- Z-order (bottom→top): basemap fills < **incident map < spread forecast < weather rasters** (inserted before first symbol layer) < basemap labels < IR heat < perimeter fill/line < hotspots < pins.
 - Pins: teardrop SVG via `addImage`; `symbol-sort-key: -acres`; `icon-allow-overlap` false below z8, true ≥z8; wildfire `#FFBB56`, prescribed `#C3B392`.
 - Hotspots: canvas hexagon uploaded `{sdf:true}`; per-scrub `setFilter(['<=',['get','acq_ts'], t])` + `icon-color` interpolate on `t - acq_ts` (0→`#FF7518`, 1d→`#FF6467`, 7d→`#C05DE1`). `acq_ts` = acq_date + zero-padded HHMM UTC at ingest; `conf_norm` low/nominal/high (MODIS numeric <30/30–79/≥80; VIIRS l/n/h).
 - Spread: `image` source with run bbox corners; frame = `updateImage({url})` (prefetched → atomic, instant).
