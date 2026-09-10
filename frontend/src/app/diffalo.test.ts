@@ -12,6 +12,8 @@ import { assembleResult, PREFERRED_SLUG, slugToPathname } from '../../../scripts
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../..');
 const read = (rel: string) => readFileSync(path.join(ROOT, rel), 'utf8');
 const spec = JSON.parse(read('diffalo.json')) as {
+  app: Record<string, unknown>;
+  env?: Record<string, string>;
   recordable: {
     expectText: string[];
     places: Record<string, string>;
@@ -51,5 +53,19 @@ describe('diffalo.json', () => {
     for (const route of Object.keys(spec.recordable.routes)) {
       expect(route.startsWith('/fire')).toBe(false);
     }
+  });
+
+  // Diffalo's app block reads only install/dev/cwd, so an env map nested there
+  // is dropped silently and the review records the app with no data URL.
+  it('keeps env at the top level and off the app block', () => {
+    expect(spec.env?.VITE_DATA_BASE_URL).toBeTruthy();
+    expect(spec.app).not.toHaveProperty('env');
+  });
+
+  // f004 returns 404 for every path in this bucket.
+  it('points the data URL at the host that serves the bucket', () => {
+    expect(spec.env?.VITE_DATA_BASE_URL).toBe(
+      'https://f005.backblazeb2.com/file/responder-debrief-data',
+    );
   });
 });
