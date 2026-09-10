@@ -3,7 +3,7 @@
  * manifest entry is shown, chosen by ctx.layers.incidentMap.mapId. The
  * source is recreated on mapId change (tile URLs/zooms/bounds all differ).
  */
-import type { Map as MlMap } from 'maplibre-gl';
+import type { Map as MlMap, MapSourceDataEvent } from 'maplibre-gl';
 import { dataUrl } from '../../api/catalogs';
 import type { IncidentMapEntry } from '../../api/types';
 import { beforeIdFor } from '../zOrder';
@@ -13,13 +13,16 @@ import { resolveSeriesVersion, seriesVersions } from '../../utils/incidentMaps';
 const SRC = 'rd-incident-map';
 const LYR = 'rd-incident-map';
 
-let lastKey: string | null = null; // `${mapId}@${rev}`
+let lastKey: string | null = null; // `${mapId}@${rev}` of the source on the map
+let loadedKey: string | null = null; // lastKey once its tiles finished loading
 let lastOpacity: number | null = null;
+let onSourceData: ((e: MapSourceDataEvent) => void) | null = null;
 
 function removeAll(map: MlMap): void {
   if (map.getLayer(LYR)) map.removeLayer(LYR);
   if (map.getSource(SRC)) map.removeSource(SRC);
   lastKey = null;
+  loadedKey = null;
   lastOpacity = null;
 }
 
@@ -41,23 +44,42 @@ function resolveEntry(
   return mapId ? findEntry(ctx, mapId) : null;
 }
 
-/** True when the pinned sheet (or series version) has a source on the map. */
-export function isIncidentMapPainted(ctx: {
-  layers: { incidentMap: { mapId: string | null; series: string | null } };
-  incidentManifest?: { maps: IncidentMapEntry[] } | undefined;
-  currentTime: number;
-}): boolean {
+/**
+ * True when the pinned sheet (or series version) has SETTLED: its tiles
+ * finished loading into the viewport, or it definitively cannot show — the
+ * manifest loaded and the entry (or its tiles) is absent, so update()
+ * removes the layer and nothing more will happen. Only "still deciding"
+ * states return false: the manifest query in flight, or tiles streaming.
+ */
+export function isIncidentMapSettled(
+  ctx: {
+    layers: { incidentMap: { mapId: string | null; series: string | null } };
+    incidentManifest?: { maps: IncidentMapEntry[] } | undefined;
+    currentTime: number;
+  },
+  manifestLoaded: boolean,
+): boolean {
   const { mapId, series } = ctx.layers.incidentMap;
   if (!mapId && !series) return true;
+  if (!manifestLoaded) return false;
   const entry = resolveEntry(ctx, mapId, series);
-  if (!entry?.tiles) return false;
-  return lastKey === `${entry.id}@${entry.rev}`;
+  if (!entry?.tiles) return true; // not in the manifest — nothing to show
+  return loadedKey === `${entry.id}@${entry.rev}`;
 }
 
 export const incidentMapLayer: LayerManager = {
-  mount() {
+  mount(map) {
     lastKey = null;
+    loadedKey = null;
     lastOpacity = null;
+    // Track when the raster source's tiles finish loading for the current
+    // viewport — "source added" is not "sheet on screen", and the ready
+    // marker must not mount while the sheet is still streaming in.
+    onSourceData = (e) => {
+      if (e.sourceId !== SRC || !e.isSourceLoaded) return;
+      loadedKey = lastKey;
+    };
+    map.on('sourcedata', onSourceData);
     // Created lazily when a map is selected.
   },
 
@@ -107,6 +129,10 @@ export const incidentMapLayer: LayerManager = {
   },
 
   unmount(map) {
+    if (onSourceData) {
+      map.off('sourcedata', onSourceData);
+      onSourceData = null;
+    }
     removeAll(map);
   },
 };

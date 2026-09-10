@@ -33,7 +33,7 @@ import {
 import { resolvePerimeterVersion } from '../timeline/framePlan';
 import type { LayerContext, LayerManager } from './layerTypes';
 
-import { fireReadyNeeds, isFireViewReady } from './fireReady';
+import { isFireViewReady, isPerimeterSettled } from './fireReady';
 import { useHistoricPerimeters, useIncidents } from '../api/queries';
 
 function histBoxForIncidents(
@@ -45,10 +45,10 @@ function histBoxForIncidents(
 import { firePinsLayer } from './layers/firePinsLayer';
 import { perimeterLayer } from './layers/perimeterLayer';
 import { hotspotLayer } from './layers/hotspotLayer';
-import { isForecastPainted, spreadForecastLayer } from './layers/spreadForecastLayer';
-import { isWeatherPainted, weatherLayers } from './layers/weatherLayers';
+import { isForecastSettled, spreadForecastLayer } from './layers/spreadForecastLayer';
+import { isWeatherSettled, weatherLayers } from './layers/weatherLayers';
 import { windArrowsLayer } from './layers/windArrowsLayer';
-import { incidentMapLayer, isIncidentMapPainted } from './layers/incidentMapLayer';
+import { incidentMapLayer, isIncidentMapSettled } from './layers/incidentMapLayer';
 import { labelContrastLayer } from './layers/labelContrast';
 import { basemapUnderlay } from './layers/basemapUnderlay';
 import { drawLayer } from './layers/drawLayer';
@@ -136,10 +136,13 @@ export function useMapLayerSync(): { perimeterReady: boolean; viewReady: boolean
 
   const { data: fires } = useFires();
   const { data: selectedFire } = useFire(corneaId);
-  const { data: perimeterIndex } = usePerimeterIndex(corneaId);
-  const { data: catalog } = useMasterCatalog();
-  const { data: pyrecastRuns } = usePyrecastRuns();
-  const { data: weatherRuns } = useWeatherRuns();
+  // isPending flips false on first success OR final error — either way the
+  // catalog question is answered and the ready predicates can settle.
+  const { data: perimeterIndex, isPending: perimeterIndexPending } =
+    usePerimeterIndex(corneaId);
+  const { data: catalog, isPending: catalogPending } = useMasterCatalog();
+  const { data: pyrecastRuns, isPending: pyrecastPending } = usePyrecastRuns();
+  const { data: weatherRuns, isPending: weatherPending } = useWeatherRuns();
 
   const catalogFire = useMemo(
     () => catalog?.fires.find((f) => f.cornea_id === corneaId) ?? null,
@@ -153,9 +156,14 @@ export function useMapLayerSync(): { perimeterReady: boolean; viewReady: boolean
   );
   const weatherRun = useMemo(() => latestWeatherRun(weatherRuns), [weatherRuns]);
 
-  const { data: incidentManifest } = useIncidentManifest(
-    catalogFire?.incident_manifest ?? null,
-  );
+  const manifestPath = catalogFire?.incident_manifest ?? null;
+  const { data: incidentManifest, isPending: manifestPending } =
+    useIncidentManifest(manifestPath);
+  // A disabled query (no manifest path) reports isPending forever — the
+  // settled question is "did we resolve whether this fire HAS a manifest,
+  // and if so, did it load": pending while the master catalog is in flight,
+  // then pending only while an actual manifest fetch runs.
+  const manifestLoaded = !catalogPending && (manifestPath ? !manifestPending : true);
 
   // Road incidents: lazy, short-lived (closures change), same box family.
   const { data: incidents } = useIncidents(
@@ -393,22 +401,37 @@ export function useMapLayerSync(): { perimeterReady: boolean; viewReady: boolean
     }
   }, [map, view, spreadRun, catalogFire, fires, perimeterFeature]);
 
-  // Diffalo waits on viewReady: every layer this view turned on has painted.
-  // Overlay loads finish inside the managers, so poll — a ctx tick alone
-  // misses the image / tar landing.
+  // Diffalo waits on viewReady: every layer this view turned on has SETTLED
+  // (painted, or definitively cannot paint — see fireReady.ts). Overlay
+  // loads finish inside the managers, so poll — a ctx tick alone misses the
+  // image / tar / tiles landing.
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
+  const readyInputs = {
+    perimeterIndexLoaded: !perimeterIndexPending,
+    weatherRunsLoaded: !weatherPending,
+    pyrecastRunsLoaded: !pyrecastPending,
+    manifestLoaded,
+  };
+  const readyInputsRef = useRef(readyInputs);
+  readyInputsRef.current = readyInputs;
   const [viewReady, setViewReady] = useState(false);
   useEffect(() => {
     const tick = () => {
       const c = ctxRef.current;
+      const f = readyInputsRef.current;
+      const version = resolvePerimeterVersion(c.perimeterIndex, c.currentTime);
       setViewReady(
         isFireViewReady({
-          needs: fireReadyNeeds(c.layers),
-          perimeterLanded: c.perimeterFeature != null,
-          weatherLanded: isWeatherPainted(c),
-          forecastLanded: isForecastPainted(c),
-          sheetLanded: isIncidentMapPainted(c),
+          perimeter: isPerimeterSettled({
+            visible: c.layers.perimeters.visible,
+            indexLoaded: f.perimeterIndexLoaded,
+            hasVersion: version != null,
+            featureLanded: c.perimeterFeature != null,
+          }),
+          weather: isWeatherSettled(c, f.weatherRunsLoaded),
+          forecast: isForecastSettled(c, f.pyrecastRunsLoaded),
+          sheet: isIncidentMapSettled(c, f.manifestLoaded),
         }),
       );
     };

@@ -225,17 +225,29 @@ function beginLoad(
     });
 }
 
-/** True when the adopted renderer matches the current product / percentile. */
-export function isForecastPainted(ctx: {
-  layers: { spread: { visible: boolean; product: SpreadProduct; percentile: number } };
-  spreadRun: PyrecastRun | null;
-}): boolean {
+/**
+ * True when the forecast layer has SETTLED: painted the current product /
+ * percentile, or it definitively cannot (no renderable run once the catalog
+ * loaded, product absent from the run, or the archive load failed — all
+ * states where update() hides the layer and nothing more will ever paint).
+ * Only "still deciding" states return false: catalog query in flight, or an
+ * archive download in progress.
+ */
+export function isForecastSettled(
+  ctx: {
+    layers: { spread: { visible: boolean; product: SpreadProduct; percentile: number } };
+    spreadRun: PyrecastRun | null;
+  },
+  runsLoaded: boolean,
+): boolean {
   if (!ctx.layers.spread.visible) return true;
+  if (!runsLoaded) return false;
   const run = ctx.spreadRun;
-  if (!run) return false;
+  if (!run) return true; // no renderable run — the layer stays hidden
   const pct = nearestPercentile(productPercentiles(run, ctx.layers.spread.product), ctx.layers.spread.percentile);
-  if (pct === null) return false;
+  if (pct === null) return true; // product absent from this run — hidden
   const key = `${run.workspace}|${ctx.layers.spread.product}|${pct}`;
+  if (failedKeys.has(key)) return true; // load failed — hidden + toasted
   return rendererKey === key && renderer != null;
 }
 
