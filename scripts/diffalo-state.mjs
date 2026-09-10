@@ -103,24 +103,62 @@ async function fetchActiveFires() {
 }
 
 /**
+ * A forecast run still covers the playhead. `has_spread_forecast` only says a
+ * run exists — most are weeks stale, and the weather rasters only carry frames
+ * from now forward, so a stale run and the weather never paint at the same
+ * instant. A story that wants both on screen needs a run whose horizon spans
+ * now.
+ */
+function runCoversNow(run, nowMs) {
+  const start = Date.parse(run?.run_time ?? '');
+  if (!Number.isFinite(start)) return false;
+  return nowMs >= start && nowMs <= start + (Number(run.horizon_hours) || 0) * 3600 * 1000;
+}
+
+/** `ff` is "{product}.{percentile}"; the picker only needs the product half. */
+function forecastProduct(ff) {
+  if (!ff) return null;
+  const text = String(ff);
+  return text.slice(0, text.lastIndexOf('.')) || null;
+}
+
+/**
  * A fire that can put the whole raster stack on screen at once: active, with a
- * spread forecast AND a georeferenced incident-map sheet.
+ * georeferenced incident-map sheet, and — when the story also seeds a forecast
+ * — a run that still covers now and offers the product asked for.
  *
  * PREFERRED_SLUG is no use here. `has_incident_maps` only means the FTP crawl
  * matched the fire; the sheet has to be georeferenced before it tiles, and the
  * preferred fire currently advertises the flag over an empty manifest. Only a
  * `tiles` block actually paints on the map, so that is what we filter on.
  */
-async function pickFireWithMapSheet() {
-  const [fires, catalog] = await Promise.all([
+async function pickFireWithMapSheet(product) {
+  const nowMs = Date.now();
+  const [fires, catalog, pyrecast] = await Promise.all([
     fetchActiveFires(),
     fetchJson(`${DATA_BASE_URL}/catalogs/catalog.json`),
+    product ? fetchJson(`${DATA_BASE_URL}/catalogs/pyrecast_runs.json`) : null,
   ]);
   const byCorneaId = new Map(fires.filter((f) => f?.cornea_id).map((f) => [f.cornea_id, f]));
+
+  const servesProduct = (slug) => {
+    if (!product) return true;
+    const runs = pyrecast?.fires?.[slug]?.runs ?? [];
+    const latest = runs[runs.length - 1];
+    if (!runCoversNow(latest, nowMs)) return false;
+    const percentiles =
+      product === 'time-of-arrival' ? latest.toa?.percentiles : latest.products?.[product]?.percentiles;
+    return Array.isArray(percentiles) && percentiles.length > 0;
+  };
+
   const candidates = (catalog?.fires ?? [])
     .filter(
       (f) =>
-        f?.active && f?.incident_manifest && f?.has_spread_forecast && byCorneaId.has(f.cornea_id),
+        f?.active &&
+        f?.incident_manifest &&
+        f?.has_spread_forecast &&
+        byCorneaId.has(f.cornea_id) &&
+        servesProduct(f.fire_slug),
     )
     .sort((a, b) => (Number(b.acres) || 0) - (Number(a.acres) || 0))
     .slice(0, MAP_SHEET_SCAN_LIMIT);
@@ -131,7 +169,9 @@ async function pickFireWithMapSheet() {
     if (sheet) return { fire: byCorneaId.get(candidate.cornea_id), mapId: sheet.id };
   }
   throw new Error(
-    'no active fire has both a spread forecast and a georeferenced incident map today',
+    product
+      ? `no active fire has a georeferenced incident map and a live ${product} forecast today`
+      : 'no active fire has both a spread forecast and a georeferenced incident map today',
   );
 }
 
@@ -208,7 +248,7 @@ export const FAMILIES = {
     // `map` is chosen here, not passed in: sheet ids are per-fire and rotate
     // with the FTP mirror, so a pinned one goes stale within the day.
     build: async (args) => {
-      const { fire, mapId } = await pickFireWithMapSheet();
+      const { fire, mapId } = await pickFireWithMapSheet(forecastProduct(args.ff));
       const pathname = fire.unique_slug
         ? slugToPathname(fire.unique_slug)
         : `/fire/${fire.cornea_id}`;
