@@ -22,6 +22,11 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const FIRE_API = 'https://fire-api-prod.web.app';
+// Worker catalogs on B2. diffalo.json passes the same value to the app.
+const DATA_BASE_URL =
+  process.env.VITE_DATA_BASE_URL || 'https://f005.backblazeb2.com/file/responder-debrief-data';
+// Manifests are one fetch each — walk the most-mirrored fires, not all ~400.
+const MANIFEST_SCAN_LIMIT = 8;
 
 /**
  * First choice when it is still active; otherwise the largest active fire that
@@ -99,6 +104,44 @@ async function pickActiveFire() {
   return fire;
 }
 
+/**
+ * An active fire whose mirrored sheets include a *tiled* one, plus that
+ * sheet's id. Only georeferenced sheets get tiled, and only tiled sheets
+ * raster onto the map — a fire with PDFs alone (or IR flights alone) puts
+ * nothing under the weather layers. Which fire qualifies changes daily, so
+ * this resolves it live for the same reason pickActiveFire does.
+ */
+async function pickTiledIncidentMap() {
+  const res = await fetch(`${DATA_BASE_URL}/catalogs/catalog.json`);
+  if (!res.ok) {
+    throw new Error(`catalog ${res.status} for ${DATA_BASE_URL}/catalogs/catalog.json`);
+  }
+  const body = await res.json();
+  const candidates = (Array.isArray(body?.fires) ? body.fires : [])
+    .filter((f) => f?.active && f?.incident_manifest && f?.cornea_id)
+    .sort((a, b) => (Number(b.incident_map_count) || 0) - (Number(a.incident_map_count) || 0))
+    .slice(0, MANIFEST_SCAN_LIMIT);
+
+  for (const fire of candidates) {
+    const manifest = await fetchManifest(fire.incident_manifest);
+    const sheet = (manifest?.maps ?? []).find((m) => m?.tiles && m?.id);
+    if (sheet) return { fire, mapId: sheet.id };
+  }
+  throw new Error(
+    `no active fire among the ${candidates.length} most-mirrored has a tiled incident map`,
+  );
+}
+
+/** A manifest that 404s or is malformed just means "try the next fire". */
+async function fetchManifest(manifestPath) {
+  try {
+    const res = await fetch(`${DATA_BASE_URL}${manifestPath}`);
+    return res.ok ? await res.json() : null;
+  } catch {
+    return null;
+  }
+}
+
 export const FAMILIES = {
   directory: {
     description:
@@ -138,6 +181,31 @@ export const FAMILIES = {
         ? slugToPathname(fire.unique_slug)
         : `/fire/${fire.cornea_id}`;
       return `${pathname}${queryString(args)}`;
+    },
+  },
+  'fire-incident-map': {
+    description:
+      'A single active fire with one of its mirrored incident-map sheets laid over the map as tiles, '
+      + 'so weather and forecast rasters have something to stack against.',
+    tags: ['fire', 'map', 'incident-map'],
+    platforms: ['web'],
+    // No `map` arg: the sheet id is picked live, because sheet ids churn as
+    // teams post new ones and a pinned one goes stale within a day.
+    args: {
+      t: { time: true },
+      wx: { parts: WEATHER_PRODUCTS },
+      ff: { products: SPREAD_PRODUCTS, percentiles: PERCENTILES },
+      bm: { enum: BASEMAPS },
+      ready: { enum: ['shell', 'perimeter'] },
+    },
+    ready: (args) => ({
+      testId: args.ready === 'shell' ? FIRE_READY.shell : FIRE_READY.perimeter,
+    }),
+    build: async (args) => {
+      const { fire, mapId } = await pickTiledIncidentMap();
+      // The catalog carries no unique_slug, so address the fire by cornea_id;
+      // the app resolves the GUID and rewrites the bar to the readable form.
+      return `/fire/${fire.cornea_id}${queryString({ ...args, map: mapId })}`;
     },
   },
   health: {
