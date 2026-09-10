@@ -22,6 +22,7 @@ export function FirePanel({ corneaId }: { corneaId: string }) {
   const { data: fire } = useFire(corneaId);
   const { data: catalog } = useMasterCatalog();
   const tab = useStore((s) => s.ui.sidebarTab);
+  const perimetersVisible = useStore((s) => s.layers.perimeters.visible);
   const actions = useStore((s) => s.actions);
 
   const catalogFire = useMemo(
@@ -47,6 +48,17 @@ export function FirePanel({ corneaId }: { corneaId: string }) {
       <header className="rd-fp-header">
         <div className="rd-fp-titlerow">
           <h2 className="rd-fp-name">{fire?.post_title ?? '…'}</h2>
+          {!perimetersVisible && (
+            <button
+              type="button"
+              className="rd-fp-show-perim"
+              title="Show fire perimeter on the map"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => actions.togglePerimeters()}
+            >
+              Show perimeter
+            </button>
+          )}
           {fire && contained && <span className="rd-badge rd-badge-contained">Contained</span>}
         </div>
         {fire && (

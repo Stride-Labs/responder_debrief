@@ -222,6 +222,27 @@
   line-height: 1.2;
 }
 
+.rd-fp-show-perim {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  padding: 0 9px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--perimeter);
+  border: 1px solid var(--perimeter);
+  border-radius: 999px;
+  background: transparent;
+  white-space: nowrap;
+  cursor: pointer;
+  touch-action: manipulation;
+  user-select: auto;
+  -webkit-user-select: auto;
+}
+.rd-fp-show-perim:hover {
+  background: var(--color-hover-bg);
+}
+
 .rd-fp-state {
   margin-top: 2px;
   font-size: 12.5px;
