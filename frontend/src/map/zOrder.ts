@@ -1,13 +1,21 @@
 /**
  * Canonical z-order for all rd- layers. Rasters slot below the basemap's
  * first symbol (label) layer so roads/places stay legible; vectors and pins
- * ride on top.
+ * ride on top. The two groups are separate arrays rather than one array with
+ * a marker index, so a layer can never drift to the wrong side of the seam.
  */
 import type { Map as MlMap } from 'maplibre-gl';
 
-/** Bottom → top. Layer ids owned by our layer managers (prefix rd-). */
-export const RD_LAYER_ORDER = [
-  // rasters (below basemap labels)
+/**
+ * Rasters, bottom → top — the whole group sits below the basemap labels.
+ *
+ * Weather rides ABOVE the incident-map sheet and the spread forecast: a
+ * scanned map sheet at full opacity would otherwise erase the smoke/RH wash
+ * underneath it, and the wash is the thing the responder came to read.
+ */
+const BELOW_LABEL_ORDER = [
+  'rd-incident-map',
+  'rd-spread-forecast',
   'rd-weather-tmpf-a', 'rd-weather-tmpf-b',
   'rd-weather-rh-a', 'rd-weather-rh-b',
   'rd-weather-ws-a', 'rd-weather-ws-b',
@@ -20,12 +28,12 @@ export const RD_LAYER_ORDER = [
   'rd-weather-meq-a', 'rd-weather-meq-b',
   'rd-weather-apcp01-a', 'rd-weather-apcp01-b',
   'rd-weather-apcptot-a', 'rd-weather-apcptot-b',
-  'rd-traffic',
-  'rd-incident-map',
-  'rd-spread-forecast',
+  'rd-traffic', // thin congestion lines — stay legible through a weather wash
   'rd-national-perimeters',
-  // ── basemap symbol layers sit here ──
-  // vectors above labels
+] as const;
+
+/** Vectors, bottom → top — the whole group sits above the basemap labels. */
+const ABOVE_LABEL_ORDER = [
   'rd-wind-arrows', // over the weather rasters + labels, under perimeters/pins
   'rd-range-fill',
   'rd-range-line',
@@ -53,12 +61,13 @@ export const RD_LAYER_ORDER = [
   'rd-route-line',
 ] as const;
 
+/** Bottom → top. Layer ids owned by our layer managers (prefix rd-). */
+export const RD_LAYER_ORDER = [...BELOW_LABEL_ORDER, ...ABOVE_LABEL_ORDER] as const;
+
 export type RdLayerId = (typeof RD_LAYER_ORDER)[number];
 
 /** Ids that must be inserted BELOW the first basemap symbol layer. */
-const BELOW_LABELS = new Set<string>(
-  RD_LAYER_ORDER.slice(0, RD_LAYER_ORDER.indexOf('rd-national-perimeters') + 1),
-);
+const BELOW_LABELS = new Set<string>(BELOW_LABEL_ORDER);
 
 export function firstSymbolLayerId(map: MlMap): string | undefined {
   const layers = map.getStyle()?.layers ?? [];
@@ -72,7 +81,7 @@ export function firstSymbolLayerId(map: MlMap): string | undefined {
  */
 export function beforeIdFor(map: MlMap, id: RdLayerId): string | undefined {
   const idx = RD_LAYER_ORDER.indexOf(id);
-  const groupEnd = BELOW_LABELS.has(id) ? RD_LAYER_ORDER.indexOf('rd-national-perimeters') + 1 : RD_LAYER_ORDER.length;
+  const groupEnd = BELOW_LABELS.has(id) ? BELOW_LABEL_ORDER.length : RD_LAYER_ORDER.length;
   for (let i = idx + 1; i < groupEnd; i++) {
     if (map.getLayer(RD_LAYER_ORDER[i])) return RD_LAYER_ORDER[i];
   }
