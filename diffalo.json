@@ -1,0 +1,27 @@
+{
+  "$schema": "https://www.diffalo.com/schema/diffalo-v1.json",
+  "version": 1,
+  "app": {
+    "dev": "cd frontend && npm run dev -- --port 5199 --strictPort",
+    "cwd": ".",
+    "reviewMode": "manual",
+    "env": {
+      "VITE_DATA_BASE_URL": "https://f004.backblazeb2.com/file/responder-debrief-data"
+    }
+  },
+  "recordable": {
+    "auth": {
+      "mode": "storage-state"
+    },
+    "expectText": [
+      "Responder Brief"
+    ],
+    "absentText": [],
+    "stateCommand": "node frontend/scripts/diffalo-state.mjs",
+    "places": {
+      "directory": "/",
+      "fire": "/fire/coleman-creek-or-2026-07-25",
+      "health": "/health"
+    }
+  }
+}
