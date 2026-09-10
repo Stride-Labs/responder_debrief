@@ -216,6 +216,25 @@ function NowSampler() {
 }
 
 /**
+ * Top-left map controls. The row is capped at the right panel's edge so it
+ * can never run under the panel — on a tablet beside an expanded panel that
+ * leaves no room for the search card next to the pills, and it wraps to its
+ * own line below them. Collapsed (or on a wide desktop) it stays one row.
+ */
+function MapToolbar() {
+  const sidebarCollapsed = useStore((s) => s.ui.sidebarCollapsed);
+  return (
+    <div className={`rd-map-toolbar${sidebarCollapsed ? ' rd-map-toolbar--rail' : ''}`}>
+      <BackControl />
+      <BasemapControl />
+      <ErrorBoundary label="Search">
+        <SearchDirectionsControl />
+      </ErrorBoundary>
+    </div>
+  );
+}
+
+/**
  * Single-fire map shell. Mounted only in fire mode: entering the directory
  * unmounts MapRoot, which disposes the maplibre instance and every layer
  * manager, so a repeat entry starts from a clean map.
@@ -225,13 +244,7 @@ function FireMapView() {
     <MapRoot>
       <MapLayerBridge />
       <UrlStateSync />
-      <div className="rd-map-toolbar">
-        <BackControl />
-        <BasemapControl />
-        <ErrorBoundary label="Search">
-          <SearchDirectionsControl />
-        </ErrorBoundary>
-      </div>
+      <MapToolbar />
       <SettingsControl />
       <ErrorBoundary label="Fire panel">
         <Sidebar />

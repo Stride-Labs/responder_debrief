@@ -1774,6 +1774,28 @@
   display: flex;
   align-items: flex-start;
   gap: 8px;
+  /* The box is wider and taller than the controls in it (it spans to the
+     panel below, and stacks on mobile) — its empty space has to pass clicks
+     through to the map rather than swallow them. */
+  pointer-events: none;
+}
+.rd-map-toolbar > * {
+  pointer-events: auto;
+}
+
+/* Desktop/tablet: stop the row at the right panel's edge and let it wrap, so
+   the search card drops under the pills exactly when the panel leaves it no
+   room (an iPad beside an expanded panel) rather than sliding underneath.
+   Same gutters the legend bar uses, so both clear the panel identically. */
+@media (min-width: 768px) {
+  .rd-map-toolbar {
+    right: calc(var(--sidebar-w) + 12px);
+    flex-wrap: wrap;
+    align-content: flex-start;
+  }
+  .rd-map-toolbar--rail {
+    right: 60px;
+  }
 }
 .rd-sd-control {
   flex: 0 0 auto;

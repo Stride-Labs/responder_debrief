@@ -7,7 +7,13 @@ import type { Map as MlMap } from 'maplibre-gl';
 
 /** Bottom → top. Layer ids owned by our layer managers (prefix rd-). */
 export const RD_LAYER_ORDER = [
-  // rasters (below basemap labels)
+  // rasters (below basemap labels). Within the group the read is
+  // weather > forecast > incident map: a mirrored incident map is an opaque
+  // scan, so at full opacity it would otherwise bury the smoke plume or
+  // spread run the responder turned it on to compare against.
+  'rd-traffic',
+  'rd-incident-map',
+  'rd-spread-forecast',
   'rd-weather-tmpf-a', 'rd-weather-tmpf-b',
   'rd-weather-rh-a', 'rd-weather-rh-b',
   'rd-weather-ws-a', 'rd-weather-ws-b',
@@ -20,9 +26,6 @@ export const RD_LAYER_ORDER = [
   'rd-weather-meq-a', 'rd-weather-meq-b',
   'rd-weather-apcp01-a', 'rd-weather-apcp01-b',
   'rd-weather-apcptot-a', 'rd-weather-apcptot-b',
-  'rd-traffic',
-  'rd-incident-map',
-  'rd-spread-forecast',
   'rd-national-perimeters',
   // ── basemap symbol layers sit here ──
   // vectors above labels
