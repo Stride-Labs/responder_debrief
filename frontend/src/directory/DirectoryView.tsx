@@ -19,8 +19,9 @@ import {
   buildDirectoryRows,
   matchesQuery,
   nearRows,
-  selectDirectoryRows,
+  selectDirectorySections,
   summarizeRows,
+  type DirectoryRow as RowData,
   type DirectorySortKey,
 } from './rowModel';
 import './directory.css';
@@ -75,7 +76,7 @@ export function DirectoryView() {
   const fires = useFires();
   const catalog = useMasterCatalog();
   const nowMs = useStore((s) => s.time.now);
-  const { query, filter, sort, near } = useStore((s) => s.ui.directory);
+  const { query, filter, sort, near, watched } = useStore((s) => s.ui.directory);
   const actions = useStore((s) => s.actions);
   const isDesktop = useIsDesktop();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -97,8 +98,8 @@ export function DirectoryView() {
 
   // Match priority: fire names and states filter instantly as you type…
   const direct = useMemo(
-    () => selectDirectoryRows(rows, { query, filter, sort }),
-    [rows, query, filter, sort],
+    () => selectDirectorySections(rows, { query, filter, sort, watched }),
+    [rows, query, filter, sort, watched],
   );
   const q = query.trim().toLowerCase();
   // Mode is decided by name/state matching ALONE — the filter chips filter
@@ -118,10 +119,14 @@ export function DirectoryView() {
   const cityMode = !hasDirect && near != null && near.query === q;
   const pool = useMemo(() => nearRows(rows, near), [rows, near]);
   const nearShown = useMemo(
-    () => selectDirectoryRows(pool, { query: '', filter, sort }),
-    [pool, filter, sort],
+    () => selectDirectorySections(pool, { query: '', filter, sort, watched }),
+    [pool, filter, sort, watched],
   );
-  const shown = cityMode ? nearShown : direct;
+  // Two sections: the starred fires, then the roster. `pinned` is empty on the
+  // Watching chip (the roster is already the watchlist) and whenever nothing
+  // is starred, in which case the page reads exactly as it did before.
+  const { pinned, rest: shown } = cityMode ? nearShown : direct;
+  const shownCount = pinned.length + shown.length;
 
   // ---- background city resolution. One debounced Photon request per
   // settled no-match query; a resolved place is remembered in the store
@@ -201,6 +206,30 @@ export function DirectoryView() {
       : 'No fires listed';
 
   const open = actions.selectFire;
+  const toggleWatch = actions.toggleDirectoryWatched;
+  // Both sections render the same row component; only the shell differs.
+  const tableRow = (r: RowData) => (
+    <DirectoryRow
+      key={r.corneaId}
+      row={r}
+      nowMs={nowMs}
+      variant="row"
+      watched={watched.has(r.corneaId)}
+      onOpen={open}
+      onToggleWatch={toggleWatch}
+    />
+  );
+  const card = (r: RowData) => (
+    <DirectoryRow
+      key={r.corneaId}
+      row={r}
+      nowMs={nowMs}
+      variant="card"
+      watched={watched.has(r.corneaId)}
+      onOpen={open}
+      onToggleWatch={toggleWatch}
+    />
+  );
 
   // In city mode the Location column carries the distances, so its header
   // sorts by distance (the entry order) instead of state.
@@ -259,13 +288,13 @@ export function DirectoryView() {
         </div>
         {hasRows && (
           <div className="rd-dir-count">
-            {nf(shown.length)}
-            {shown.length === rows.length ? '' : ` of ${nf(rows.length)}`} shown
+            {nf(shownCount)}
+            {shownCount === rows.length ? '' : ` of ${nf(rows.length)}`} shown
           </div>
         )}
       </div>
 
-      {cityMode && shown.length > 0 && (
+      {cityMode && shownCount > 0 && (
         <div className="rd-dir-nearline">
           No fire or state names match “{query.trim()}” — showing fires within{' '}
           {NEAR_RADIUS_MI} mi of <strong>{near.label}</strong>, closest first.
@@ -310,17 +339,19 @@ export function DirectoryView() {
             {loading && !hasRows ? (
               <SkeletonRows desktop />
             ) : (
-              <tbody>
-                {shown.map((r) => (
-                  <DirectoryRow
-                    key={r.corneaId}
-                    row={r}
-                    nowMs={nowMs}
-                    variant="row"
-                    onOpen={open}
-                  />
-                ))}
-              </tbody>
+              <>
+                {pinned.length > 0 && (
+                  <tbody className="rd-dir-pinned">
+                    <tr className="rd-dir-section">
+                      <th colSpan={columns.length} scope="colgroup">
+                        Watching <span className="rd-dir-section-n">{nf(pinned.length)}</span>
+                      </th>
+                    </tr>
+                    {pinned.map(tableRow)}
+                  </tbody>
+                )}
+                <tbody>{shown.map(tableRow)}</tbody>
+              </>
             )}
           </table>
         )}
@@ -329,30 +360,47 @@ export function DirectoryView() {
           loading && !hasRows ? (
             <SkeletonRows desktop={false} />
           ) : (
-            <ul className="rd-dir-cards">
-              {shown.map((r) => (
-                <DirectoryRow
-                  key={r.corneaId}
-                  row={r}
-                  nowMs={nowMs}
-                  variant="card"
-                  onOpen={open}
-                />
-              ))}
-            </ul>
+            <>
+              {pinned.length > 0 && (
+                <>
+                  <div className="rd-dir-section rd-dir-section--cards">
+                    Watching <span className="rd-dir-section-n">{nf(pinned.length)}</span>
+                  </div>
+                  <ul className="rd-dir-cards rd-dir-pinned">{pinned.map(card)}</ul>
+                </>
+              )}
+              <ul className="rd-dir-cards">{shown.map(card)}</ul>
+            </>
           )
         )}
 
-        {!failed && !loading && hasRows && shown.length === 0 && (
-          <div className="rd-empty">
-            {resolving
-              ? `No fire or state names match — checking cities…`
-              : cityMode && pool.length === 0
-                ? `No fires within ${NEAR_RADIUS_MI} miles of ${near.label}.`
-                : cityMode
-                  ? `No fires near ${near.label} match these filters.`
-                  : 'No fires match this search.'}
-          </div>
+        {!failed && !loading && hasRows && shownCount === 0 && (
+          filter === 'watching' && watched.size === 0 ? (
+            <div className="rd-empty rd-empty--watch">
+              <div className="rd-empty-title">Nothing on the watchlist yet</div>
+              <p>
+                Star a fire — the{' '}
+                <span className="rd-empty-star" aria-hidden="true">
+                  ☆
+                </span>{' '}
+                beside its name — to add it here. Watched fires also pin to the top of the
+                roster, so they stay in view under any filter.
+              </p>
+              <p className="rd-dir-sub">Kept on this device only; nothing is uploaded.</p>
+            </div>
+          ) : (
+            <div className="rd-empty">
+              {resolving
+                ? `No fire or state names match — checking cities…`
+                : cityMode && pool.length === 0
+                  ? `No fires within ${NEAR_RADIUS_MI} miles of ${near.label}.`
+                  : cityMode
+                    ? `No fires near ${near.label} match these filters.`
+                    : filter === 'watching'
+                      ? 'No watched fires match this search.'
+                      : 'No fires match this search.'}
+            </div>
+          )
         )}
         {!failed && !loading && !hasRows && (
           <div className="rd-empty">No active fires are listed right now.</div>

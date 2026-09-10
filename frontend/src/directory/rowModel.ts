@@ -198,18 +198,27 @@ export function perimeterFreshness(
 
 // ---------- filtering ----------
 
-export type DirectoryFilter = 'all' | 'forecast' | 'maps' | 'large' | 'uncontained';
+export type DirectoryFilter = 'all' | 'watching' | 'forecast' | 'maps' | 'large' | 'uncontained';
 
 export const DIRECTORY_FILTERS: { id: DirectoryFilter; label: string }[] = [
   { id: 'all', label: 'All' },
+  { id: 'watching', label: 'Watching' },
   { id: 'forecast', label: 'Has forecast' },
   { id: 'maps', label: 'Has incident maps' },
   { id: 'large', label: '>1000 acres' },
   { id: 'uncontained', label: '<50% contained' },
 ];
 
-export function matchesFilter(row: DirectoryRow, filter: DirectoryFilter): boolean {
+const NO_WATCHED: ReadonlySet<string> = new Set();
+
+export function matchesFilter(
+  row: DirectoryRow,
+  filter: DirectoryFilter,
+  watched: ReadonlySet<string> = NO_WATCHED,
+): boolean {
   switch (filter) {
+    case 'watching':
+      return watched.has(row.corneaId);
     case 'forecast':
       return row.hasForecast;
     case 'maps':
@@ -372,11 +381,45 @@ export function nearRows(rows: DirectoryRow[], near: DirectoryNear | null | unde
  * mode: pass the rows through nearRows() first. */
 export function selectDirectoryRows(
   rows: DirectoryRow[],
-  opts: { query: string; filter: DirectoryFilter; sort: DirectorySort },
+  opts: {
+    query: string;
+    filter: DirectoryFilter;
+    sort: DirectorySort;
+    /** Starred cornea ids — only the 'watching' filter reads them. */
+    watched?: ReadonlySet<string>;
+  },
 ): DirectoryRow[] {
   return rows
-    .filter((r) => matchesFilter(r, opts.filter) && matchesQuery(r, opts.query))
+    .filter((r) => matchesFilter(r, opts.filter, opts.watched) && matchesQuery(r, opts.query))
     .sort((a, b) => compareRows(a, b, opts.sort));
+}
+
+/**
+ * The roster as the directory draws it: starred fires pinned above the rest.
+ *
+ * `pinned` deliberately ignores the filter chip — the point of a watchlist is
+ * that those fires stay in view under any filter — but it still honours the
+ * search box, so a search narrows the whole page. `rest` is the ordinary
+ * filtered roster minus whatever got pinned, so no fire is drawn twice. Both
+ * halves carry the same sort.
+ *
+ * On the 'watching' chip the roster IS the watchlist, so nothing is pinned
+ * above it (a section duplicating the list below it would just be noise).
+ */
+export function selectDirectorySections(
+  rows: DirectoryRow[],
+  opts: {
+    query: string;
+    filter: DirectoryFilter;
+    sort: DirectorySort;
+    watched: ReadonlySet<string>;
+  },
+): { pinned: DirectoryRow[]; rest: DirectoryRow[] } {
+  const rest = selectDirectoryRows(rows, opts);
+  if (opts.filter === 'watching' || opts.watched.size === 0) return { pinned: [], rest };
+  const pinned = selectDirectoryRows(rows, { ...opts, filter: 'watching' });
+  const pinnedIds = new Set(pinned.map((r) => r.corneaId));
+  return { pinned, rest: rest.filter((r) => !pinnedIds.has(r.corneaId)) };
 }
 
 export interface DirectorySummary {

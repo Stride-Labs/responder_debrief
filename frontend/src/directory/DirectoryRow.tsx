@@ -3,7 +3,7 @@
  * stacked card on mobile — same derived values, two shells. Memoized: the
  * roster is ~400 rows and re-renders on every keystroke in the search box.
  */
-import { memo, type KeyboardEvent } from 'react';
+import { memo, type KeyboardEvent, type MouseEvent } from 'react';
 import { daysSince, formatAcres, formatDay, formatPct, formatRelative } from '../utils/format';
 import { perimeterFreshness, type DirectoryRow as Row } from './rowModel';
 
@@ -27,6 +27,49 @@ function ContainmentRing({ pct }: { pct: number | null }) {
         transform="rotate(-90 7 7)"
       />
     </svg>
+  );
+}
+
+/**
+ * Watchlist toggle. It sits inside a row that is itself a button (the row
+ * opens the fire), so every event it handles stops there — including the
+ * keyboard ones, or Enter on the star would also open the map.
+ */
+function WatchStar({
+  name,
+  watched,
+  onToggle,
+}: {
+  name: string;
+  watched: boolean;
+  onToggle: () => void;
+}) {
+  const label = watched ? `Stop watching ${name}` : `Watch ${name}`;
+  return (
+    <button
+      type="button"
+      className={`rd-star${watched ? ' rd-star--on' : ''}`}
+      aria-pressed={watched}
+      aria-label={label}
+      title={label}
+      onClick={(e: MouseEvent) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onKeyDown={(e: KeyboardEvent) => {
+        if (e.key === 'Enter' || e.key === ' ') e.stopPropagation();
+      }}
+    >
+      <svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true">
+        <path
+          d="M8 1.6l1.94 3.93 4.34.63-3.14 3.06.74 4.32L8 11.5l-3.88 2.04.74-4.32L1.72 6.16l4.34-.63z"
+          fill={watched ? 'currentColor' : 'none'}
+          stroke="currentColor"
+          strokeWidth="1.4"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
   );
 }
 
@@ -136,12 +179,22 @@ export interface DirectoryRowProps {
   row: Row;
   nowMs: number;
   variant: 'row' | 'card';
+  watched: boolean;
   onOpen: (corneaId: string) => void;
+  onToggleWatch: (corneaId: string) => void;
 }
 
-function DirectoryRowImpl({ row, nowMs, variant, onOpen }: DirectoryRowProps) {
+function DirectoryRowImpl({
+  row,
+  nowMs,
+  variant,
+  watched,
+  onOpen,
+  onToggleWatch,
+}: DirectoryRowProps) {
   const c = cells(row, nowMs);
   const open = () => onOpen(row.corneaId);
+  const toggleWatch = () => onToggleWatch(row.corneaId);
   const onKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault();
@@ -162,6 +215,7 @@ function DirectoryRowImpl({ row, nowMs, variant, onOpen }: DirectoryRowProps) {
         <div className="rd-dir-card-top">
           <FireName row={row} />
           <span className="rd-dir-card-size">{formatAcres(row.acres)}</span>
+          <WatchStar name={row.name} watched={watched} onToggle={toggleWatch} />
         </div>
         <div className="rd-dir-card-meta">
           <span>
@@ -202,10 +256,15 @@ function DirectoryRowImpl({ row, nowMs, variant, onOpen }: DirectoryRowProps) {
   return (
     <tr className="rd-dir-row" {...shared}>
       <td className="rd-dir-c-fire">
-        <div className="rd-dir-fire-main">
-          <FireName row={row} />
+        <div className="rd-dir-fire-cell">
+          <WatchStar name={row.name} watched={watched} onToggle={toggleWatch} />
+          <div className="rd-dir-fire-text">
+            <div className="rd-dir-fire-main">
+              <FireName row={row} />
+            </div>
+            <Containment row={row} />
+          </div>
         </div>
-        <Containment row={row} />
       </td>
       <td className="rd-dir-c-loc">
         {row.state || DASH}

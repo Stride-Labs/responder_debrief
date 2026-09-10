@@ -9,6 +9,7 @@ import {
   nearRows,
   perimeterFreshness,
   selectDirectoryRows,
+  selectDirectorySections,
   summarizeRows,
   type DirectoryRow,
 } from './rowModel';
@@ -232,6 +233,9 @@ describe('filters', () => {
     expect(matchesFilter(row({ containment: 49 }), 'uncontained')).toBe(true);
     expect(matchesFilter(row({ containment: 50 }), 'uncontained')).toBe(false);
     expect(matchesFilter(row({ containment: null }), 'uncontained')).toBe(true);
+    expect(matchesFilter(row({ corneaId: 'w' }), 'watching', new Set(['w']))).toBe(true);
+    expect(matchesFilter(row({ corneaId: 'w' }), 'watching', new Set(['x']))).toBe(false);
+    expect(matchesFilter(row({ corneaId: 'w' }), 'watching')).toBe(false);
   });
 
   it('searches name and state case-insensitively', () => {
@@ -323,6 +327,79 @@ describe('selectDirectoryRows', () => {
         sort: { key: 'acres', dir: 'desc' },
       }).map((r) => r.name),
     ).toEqual(['Coleman Creek']);
+  });
+});
+
+describe('selectDirectorySections', () => {
+  const rows = [
+    row({ corneaId: '1', name: 'Moose', state: 'ID', acres: 5892, hasForecast: true }),
+    row({ corneaId: '2', name: 'Coleman Creek', state: 'OR', acres: 308721, hasIncidentMaps: true }),
+    row({ corneaId: '3', name: 'Church 2', state: 'CA', acres: 132 }),
+  ];
+  const sort = { key: 'acres', dir: 'desc' } as const;
+
+  it('pins watched fires above the roster and never lists one twice', () => {
+    const { pinned, rest } = selectDirectorySections(rows, {
+      query: '',
+      filter: 'all',
+      sort,
+      watched: new Set(['3']),
+    });
+    expect(pinned.map((r) => r.corneaId)).toEqual(['3']);
+    expect(rest.map((r) => r.corneaId)).toEqual(['2', '1']);
+  });
+
+  it('pins a watched fire the active filter excludes', () => {
+    const { pinned, rest } = selectDirectorySections(rows, {
+      query: '',
+      filter: 'forecast',
+      sort,
+      watched: new Set(['3']),
+    });
+    expect(pinned.map((r) => r.corneaId)).toEqual(['3']);
+    expect(rest.map((r) => r.corneaId)).toEqual(['1']);
+  });
+
+  it('keeps the pinned section in the current sort order', () => {
+    const { pinned } = selectDirectorySections(rows, {
+      query: '',
+      filter: 'all',
+      sort: { key: 'name', dir: 'asc' },
+      watched: new Set(['1', '2']),
+    });
+    expect(pinned.map((r) => r.name)).toEqual(['Coleman Creek', 'Moose']);
+  });
+
+  it('narrows the pinned section by the search box', () => {
+    const { pinned } = selectDirectorySections(rows, {
+      query: 'moose',
+      filter: 'all',
+      sort,
+      watched: new Set(['1', '3']),
+    });
+    expect(pinned.map((r) => r.corneaId)).toEqual(['1']);
+  });
+
+  it('pins nothing on the Watching chip — the roster is already the watchlist', () => {
+    const { pinned, rest } = selectDirectorySections(rows, {
+      query: '',
+      filter: 'watching',
+      sort,
+      watched: new Set(['1', '3']),
+    });
+    expect(pinned).toEqual([]);
+    expect(rest.map((r) => r.corneaId)).toEqual(['1', '3']);
+  });
+
+  it('leaves the roster untouched when nothing is starred', () => {
+    const { pinned, rest } = selectDirectorySections(rows, {
+      query: '',
+      filter: 'all',
+      sort,
+      watched: new Set(),
+    });
+    expect(pinned).toEqual([]);
+    expect(rest.map((r) => r.corneaId)).toEqual(['2', '1', '3']);
   });
 });
 

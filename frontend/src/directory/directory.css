@@ -194,11 +194,109 @@
   outline-offset: -2px;
 }
 
+/* Fire cell: star, then the name/containment stack beside it. */
+.rd-dir-fire-cell {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  min-width: 0;
+}
+
+.rd-dir-fire-text {
+  min-width: 0;
+}
+
 .rd-dir-fire-main {
   display: flex;
   align-items: baseline;
   gap: 7px;
   min-width: 0;
+}
+
+/* ---------- watchlist star ---------- */
+
+.rd-star {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  margin: -3px -4px -3px -5px;
+  border-radius: 6px;
+  background: none;
+  border: 0;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  transition:
+    color 0.12s ease,
+    opacity 0.12s ease,
+    background-color 0.12s ease;
+}
+/* Rest state is quiet: one faint star per row would otherwise out-shout the
+   fire names. The row hover brings the whole column up. */
+.rd-dir-row:hover .rd-star,
+.rd-dir-card:hover .rd-star {
+  opacity: 0.85;
+}
+/* Doubled class so the star's own hover/focus outranks the row-hover rule
+   above — otherwise it stays dimmed under the cursor that lit it. */
+.rd-star.rd-star:hover {
+  opacity: 1;
+  color: var(--color-accent);
+  background: var(--color-hover-bg);
+}
+.rd-star.rd-star:focus-visible {
+  outline: 2px solid var(--color-accent);
+  outline-offset: -2px;
+  opacity: 1;
+}
+.rd-star--on,
+.rd-dir-row:hover .rd-star--on,
+.rd-dir-card:hover .rd-star--on {
+  color: var(--color-accent);
+  opacity: 1;
+}
+
+/* ---------- pinned "Watching" section ---------- */
+
+.rd-dir-section th,
+.rd-dir-section--cards {
+  padding: 14px 16px 6px;
+  text-align: left;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: var(--color-accent);
+}
+
+.rd-dir-section-n {
+  margin-left: 6px;
+  color: var(--color-text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* The pinned block reads as one unit: a faint accent wash instead of the
+   roster's zebra striping, closed by a heavier rule before the roster. */
+.rd-dir-pinned {
+  --rd-pin-bg: color-mix(in srgb, var(--color-accent) 6%, transparent);
+  --rd-pin-edge: color-mix(in srgb, var(--color-accent) 40%, var(--color-border));
+}
+.rd-dir-table tbody.rd-dir-pinned td,
+.rd-dir-table tbody.rd-dir-pinned tr:nth-child(2n) td {
+  background: var(--rd-pin-bg);
+}
+.rd-dir-table tbody.rd-dir-pinned tr:last-child td {
+  border-bottom: 2px solid var(--rd-pin-edge);
+}
+.rd-dir-cards.rd-dir-pinned .rd-dir-card,
+.rd-dir-cards.rd-dir-pinned .rd-dir-card:nth-child(2n) {
+  background: var(--rd-pin-bg);
+}
+.rd-dir-cards.rd-dir-pinned .rd-dir-card:last-child {
+  border-bottom: 2px solid var(--rd-pin-edge);
 }
 
 .rd-dir-name {
@@ -358,6 +456,13 @@
   .rd-dir-count {
     margin-left: 0;
   }
+  /* Thumb-sized target on the card, without stretching the card's top row. */
+  .rd-star {
+    width: 40px;
+    height: 40px;
+    margin: -11px -10px -11px 0;
+    opacity: 0.75;
+  }
 }
 
 .rd-dir-health-link {
@@ -379,6 +484,27 @@
   border-bottom: 1px solid var(--color-border);
 }
 .rd-dir-nearline strong { color: var(--color-text); font-weight: 600; }
+
+
+/* ---------- watchlist empty state ---------- */
+.rd-empty--watch {
+  max-width: 420px;
+  margin-inline: auto;
+  text-align: center;
+}
+.rd-empty--watch p {
+  margin: 6px 0 0;
+  line-height: 1.5;
+}
+.rd-empty-title {
+  font-family: var(--font-serif);
+  font-weight: 600;
+  font-size: 16px;
+  color: var(--color-text);
+}
+.rd-empty-star {
+  color: var(--color-accent);
+}
 
 
 /* ---------- offline fires strip ---------- */

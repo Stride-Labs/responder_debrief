@@ -9,6 +9,7 @@ import { DEFAULT_PLAYBACK_SPEED } from '../app/config';
 import type { Percentile, SpreadProduct, WeatherProduct } from '../api/types';
 import { TOA_DEFAULT_WITHIN_HOURS } from '../spread/toaBands';
 import type { DirectoryFilter, DirectoryNear, DirectorySort, DirectorySortKey } from '../directory/rowModel';
+import { loadWatchlist, saveWatchlist, toggleWatched } from '../directory/watchlist';
 import { MAP_STYLES } from '../app/config';
 
 /**
@@ -171,6 +172,8 @@ export interface AppState {
       sort: DirectorySort;
       /** Proximity mode: only fires near this place, closest first. */
       near: DirectoryNear | null;
+      /** Starred cornea ids. Per-device (localStorage), never uploaded. */
+      watched: ReadonlySet<string>;
     };
     /** Chosen basemap style id per theme (see MAP_STYLES). */
     mapStyle: { dark: string; light: string };
@@ -234,6 +237,8 @@ export interface AppState {
     toggleDirectorySort(key: DirectorySortKey): void;
     /** Enter/leave "near <place>" mode; entering sorts by distance. */
     setDirectoryNear(near: DirectoryNear | null): void;
+    /** Star/unstar a fire; the new set is written straight to localStorage. */
+    toggleDirectoryWatched(corneaId: string): void;
     setMapStyle(theme: 'dark' | 'light', id: string): void;
     setOfflinePacks(packs: Record<string, import('../offline/packs').PackMeta>): void;
     setOfflineProgress(p: AppState['offline']['progress']): void;
@@ -327,7 +332,13 @@ export const useStore = create<AppState>((set, get) => ({
     sheetSnap: 'peek',
     legendKey: null,
     toast: null,
-    directory: { query: '', filter: 'all', sort: { key: 'acres', dir: 'desc' }, near: null },
+    directory: {
+      query: '',
+      filter: 'all',
+      sort: { key: 'acres', dir: 'desc' },
+      near: null,
+      watched: loadWatchlist(),
+    },
     mapStyle: initMapStyle(),
   },
 
@@ -653,6 +664,12 @@ export const useStore = create<AppState>((set, get) => ({
             : cur;
         return { ui: { ...s.ui, directory: { ...s.ui.directory, near, sort } } };
       }),
+    toggleDirectoryWatched: (corneaId) => {
+      const watched = toggleWatched(get().ui.directory.watched, corneaId);
+      saveWatchlist(watched);
+      track('fire_watched', { on: watched.has(corneaId) });
+      set((s) => ({ ui: { ...s.ui, directory: { ...s.ui.directory, watched } } }));
+    },
     setOfflinePacks: (packs) => set((s) => ({ offline: { ...s.offline, packs } })),
     setOfflineProgress: (progress) => set((s) => ({ offline: { ...s.offline, progress } })),
     setOnline: (online) =>
