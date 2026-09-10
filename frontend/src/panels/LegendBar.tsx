@@ -39,6 +39,8 @@ export function LegendBar() {
   const toaMode = useStore((s) => s.layers.spread.toaMode);
   const toaWithinHours = useStore((s) => s.layers.spread.toaWithinHours);
   const sidebarCollapsed = useStore((s) => s.ui.sidebarCollapsed);
+  const legendCollapsed = useStore((s) => s.ui.legendCollapsed);
+  const setLegendCollapsed = useStore((s) => s.actions.setLegendCollapsed);
   const view = useStore((s) => s.view);
   const corneaId = view.mode === 'fire' ? view.corneaId : null;
 
@@ -102,8 +104,34 @@ export function LegendBar() {
   if (!showSpread && weatherRows.length === 0) return null;
 
   return (
-    <div className={`rd-legendbar${sidebarCollapsed ? ' rd-legendbar--rail' : ''}`}>
-      {showSpread && spreadProduct && (
+    <div
+      className={`rd-legendbar${sidebarCollapsed ? ' rd-legendbar--rail' : ''}${legendCollapsed ? ' rd-legendbar--folded' : ''}`}
+    >
+      <button
+        type="button"
+        className="rd-legendbar-header"
+        aria-expanded={!legendCollapsed}
+        title={legendCollapsed ? 'Show legend' : 'Hide legend'}
+        onClick={() => setLegendCollapsed(!legendCollapsed)}
+      >
+        <span className="rd-legendbar-title">Legend</span>
+        <svg
+          width="12"
+          height="12"
+          viewBox="0 0 14 14"
+          fill="none"
+          aria-hidden="true"
+          style={{ transform: legendCollapsed ? 'rotate(180deg)' : undefined }}
+        >
+          <path
+            d="M2.5 5L7 9.5L11.5 5"
+            stroke="currentColor"
+            strokeWidth="1.5"
+            strokeLinecap="round"
+          />
+        </svg>
+      </button>
+      {!legendCollapsed && showSpread && spreadProduct && (
         <div className="rd-legendbar-spread">
           <div className="rd-legendbar-caption">{SPREAD_PRODUCT_LABELS[spreadProduct]}</div>
           {isToa && run ? (
@@ -129,16 +157,17 @@ export function LegendBar() {
           ) : null}
         </div>
       )}
-      {weatherRows.map((row) => (
-        <div key={row.product} className="rd-legendbar-weather-row">
-          <span className="rd-legendbar-label">{row.label}</span>
-          {row.stops ? (
-            <GradientLegend stops={row.stops} units={row.units} />
-          ) : (
-            <LegendImg src={row.url} alt={`${row.label} legend`} />
-          )}
-        </div>
-      ))}
+      {!legendCollapsed &&
+        weatherRows.map((row) => (
+          <div key={row.product} className="rd-legendbar-weather-row">
+            <span className="rd-legendbar-label">{row.label}</span>
+            {row.stops ? (
+              <GradientLegend stops={row.stops} units={row.units} />
+            ) : (
+              <LegendImg src={row.url} alt={`${row.label} legend`} />
+            )}
+          </div>
+        ))}
     </div>
   );
 }

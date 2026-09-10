@@ -1061,6 +1061,37 @@
   right: 60px;
 }
 
+.rd-legendbar--folded {
+  padding: 5px 10px;
+}
+
+.rd-legendbar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* Folded bar must not shrink to just the word + chevron. */
+  min-width: 116px;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.rd-legendbar-header:hover {
+  color: var(--color-text);
+}
+
+.rd-legendbar:not(.rd-legendbar--folded) .rd-legendbar-header {
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rd-legendbar-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .rd-legendbar-caption,
 .rd-legendbar-label {
   font-size: 10px;
