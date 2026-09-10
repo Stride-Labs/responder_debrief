@@ -158,6 +158,23 @@ function removePair(map: MlMap, p: WeatherProduct, pair: Pair): void {
   pairs.delete(p);
 }
 
+/** True when every visible weather product has its current frame in the active member. */
+export function isWeatherPainted(ctx: {
+  layers: { weather: Partial<Record<WeatherProduct, { visible?: boolean } | undefined>> };
+  weatherRun: WeatherRun | null;
+  currentTime: number;
+}): boolean {
+  const frame = resolveWeatherFrame(ctx.weatherRun, ctx.currentTime);
+  for (const p of RENDERED_WEATHER_PRODUCTS) {
+    if (!ctx.layers.weather[p]?.visible) continue;
+    if (!frame || !ctx.weatherRun) return false;
+    const pair = pairs.get(p);
+    const wanted = weatherImageUrl(ctx.weatherRun, p, frame.hourIso);
+    if (!pair || pair.url[pair.active] !== wanted) return false;
+  }
+  return true;
+}
+
 export const weatherLayers: LayerManager = {
   mount() {
     // Pairs are created lazily per enabled product; nothing to add up front.

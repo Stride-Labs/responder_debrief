@@ -27,6 +27,33 @@ function findEntry(ctx: { incidentManifest?: { maps: IncidentMapEntry[] } | unde
   return ctx.incidentManifest?.maps.find((m) => m.id === mapId && m.tiles != null) ?? null;
 }
 
+function resolveEntry(
+  ctx: { incidentManifest?: { maps: IncidentMapEntry[] } | undefined; currentTime?: number },
+  mapId: string | null,
+  series: string | null,
+): IncidentMapEntry | null {
+  if (series) {
+    return resolveSeriesVersion(
+      seriesVersions(ctx.incidentManifest?.maps ?? [], series),
+      ctx.currentTime ?? 0,
+    );
+  }
+  return mapId ? findEntry(ctx, mapId) : null;
+}
+
+/** True when the pinned sheet (or series version) has a source on the map. */
+export function isIncidentMapPainted(ctx: {
+  layers: { incidentMap: { mapId: string | null; series: string | null } };
+  incidentManifest?: { maps: IncidentMapEntry[] } | undefined;
+  currentTime: number;
+}): boolean {
+  const { mapId, series } = ctx.layers.incidentMap;
+  if (!mapId && !series) return true;
+  const entry = resolveEntry(ctx, mapId, series);
+  if (!entry?.tiles) return false;
+  return lastKey === `${entry.id}@${entry.rev}`;
+}
+
 export const incidentMapLayer: LayerManager = {
   mount() {
     lastKey = null;
@@ -36,15 +63,7 @@ export const incidentMapLayer: LayerManager = {
 
   update(map, ctx) {
     const { mapId, series } = ctx.layers.incidentMap;
-    // Series mode: the scrub time picks which version of the sheet shows.
-    const entry = series
-      ? resolveSeriesVersion(
-          seriesVersions(ctx.incidentManifest?.maps ?? [], series),
-          ctx.currentTime,
-        )
-      : mapId
-        ? findEntry(ctx, mapId)
-        : null;
+    const entry = resolveEntry(ctx, mapId, series);
     const tiles = entry?.tiles ?? null;
 
     if (!entry || !tiles) {

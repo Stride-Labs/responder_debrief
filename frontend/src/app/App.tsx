@@ -27,11 +27,17 @@ import { useFires } from '../api/queries';
 import { applyViewState, buildSearch, decodeSearch } from './urlState';
 
 function MapLayerBridge() {
-  const perimeterReady = useMapLayerSync();
+  const { perimeterReady, viewReady } = useMapLayerSync();
   useTimelineDomain();
-  if (!perimeterReady) return null;
   return (
-    <div className="rd-fire-perimeter-ready" data-testid="rd-fire-perimeter" aria-hidden="true" />
+    <>
+      {perimeterReady ? (
+        <div className="rd-fire-ready-mark" data-testid="rd-fire-perimeter" aria-hidden="true" />
+      ) : null}
+      {viewReady ? (
+        <div className="rd-fire-ready-mark" data-testid="rd-fire-ready" aria-hidden="true" />
+      ) : null}
+    </>
   );
 }
 

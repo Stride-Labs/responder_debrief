@@ -53,7 +53,7 @@ const FIRE_QUERY_PARAMS = [
 ];
 const FIRE_READY = {
   shell: 'rd-fire-shell',
-  perimeter: 'rd-fire-perimeter',
+  view: 'rd-fire-ready',
 };
 
 export function parseTime(s) {
@@ -178,9 +178,12 @@ export const FAMILIES = {
       ir: {},
       ready: { enum: ['shell', 'perimeter'] },
     },
-    // Perimeter outlasts the 1200ms load flyTo; shell is the mounted chrome only.
+    // The app mounts rd-fire-ready when every layer this view turned on
+    // has painted. Overlay args (wx / ff / map) do not wait for the outline.
+    // `ready: perimeter` is accepted so old briefs still validate; it now
+    // means "the seeded view", not the outline marker.
     ready: (args) => ({
-      testId: args.ready === 'shell' ? FIRE_READY.shell : FIRE_READY.perimeter,
+      testId: args.ready === 'shell' ? FIRE_READY.shell : FIRE_READY.view,
     }),
     build: async (args) => {
       const fire = await pickActiveFire();
@@ -203,7 +206,7 @@ export const FAMILIES = {
       ready: { enum: ['shell', 'perimeter'] },
     },
     ready: (args) => ({
-      testId: args.ready === 'shell' ? FIRE_READY.shell : FIRE_READY.perimeter,
+      testId: args.ready === 'shell' ? FIRE_READY.shell : FIRE_READY.view,
     }),
     // `map` is chosen here, not passed in: sheet ids are per-fire and rotate
     // with the FTP mirror, so a pinned one goes stale within the day.

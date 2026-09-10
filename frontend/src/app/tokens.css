@@ -151,9 +151,10 @@ a {
   background: transparent;
 }
 
-/* Diffalo waits on this after the perimeter GeoJSON lands — 1×1 so
-   Playwright sees a box, opacity 0 so the map does not. */
-.rd-fire-perimeter-ready {
+/* Diffalo waits on these — 1×1 so Playwright sees a box, opacity 0 so
+   the map does not. rd-fire-ready is the seeded view; rd-fire-perimeter
+   still mounts when the outline GeoJSON lands (older waits). */
+.rd-fire-ready-mark {
   position: absolute;
   top: 0;
   left: 0;
