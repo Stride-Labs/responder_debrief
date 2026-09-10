@@ -158,16 +158,29 @@ function removePair(map: MlMap, p: WeatherProduct, pair: Pair): void {
   pairs.delete(p);
 }
 
-/** True when every visible weather product has its current frame in the active member. */
-export function isWeatherPainted(ctx: {
-  layers: { weather: Partial<Record<WeatherProduct, { visible?: boolean } | undefined>> };
-  weatherRun: WeatherRun | null;
-  currentTime: number;
-}): boolean {
+/**
+ * True when every visible weather product has SETTLED: its current frame is
+ * in the active member, or nothing will ever paint — no run once the catalog
+ * loaded, or the playhead sits outside frame coverage (update() hides the
+ * pair in both cases). Only a catalog query in flight or a frame swap in
+ * progress keeps this false.
+ */
+export function isWeatherSettled(
+  ctx: {
+    layers: { weather: Partial<Record<WeatherProduct, { visible?: boolean } | undefined>> };
+    weatherRun: WeatherRun | null;
+    currentTime: number;
+  },
+  runsLoaded: boolean,
+): boolean {
+  const anyVisible = RENDERED_WEATHER_PRODUCTS.some((p) => ctx.layers.weather[p]?.visible);
+  if (!anyVisible) return true;
+  if (!runsLoaded) return false;
+  if (!ctx.weatherRun) return true; // no run — pairs stay hidden
   const frame = resolveWeatherFrame(ctx.weatherRun, ctx.currentTime);
+  if (!frame) return true; // playhead outside coverage — pairs hidden
   for (const p of RENDERED_WEATHER_PRODUCTS) {
     if (!ctx.layers.weather[p]?.visible) continue;
-    if (!frame || !ctx.weatherRun) return false;
     const pair = pairs.get(p);
     const wanted = weatherImageUrl(ctx.weatherRun, p, frame.hourIso);
     if (!pair || pair.url[pair.active] !== wanted) return false;

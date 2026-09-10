@@ -1,43 +1,44 @@
 /**
- * Diffalo waits on `rd-fire-ready` until every layer this view actually
- * turned on has painted. Overlay stories (weather, forecast, map sheet)
- * must not wait for the fire outline — that marker never appears when
- * the seed hid the perimeter, and it is the wrong gate even when the
- * outline is still on.
+ * Diffalo waits on `rd-fire-ready` until the fire view has SETTLED: every
+ * layer the seed turned on has either painted, or definitively cannot paint
+ * from the data we have (catalog loaded but the run/product/sheet is absent,
+ * or the download failed and the layer hid itself). "Settled" — not
+ * "painted" — is the invariant that keeps the marker guaranteed to mount:
+ * a predicate that only accepts the painted state hangs forever the moment
+ * a seeded layer's data is missing, and no recording timeout fixes that.
  *
- * Default fire (no overlays, perimeter still on) still waits for the
- * outline. Shell-only (`ready=shell`) never reaches this helper.
+ * Still-loading states (catalog query in flight, archive downloading,
+ * tiles streaming) stay unsettled, so the marker never mounts early on a
+ * view that is about to change.
+ *
+ * The per-layer settle logic lives next to each layer manager
+ * (isWeatherSettled / isForecastSettled / isIncidentMapSettled); this module
+ * just combines the signals. Shell-only (`ready=shell`) never reaches this.
  */
-export type FireReadyNeed = 'perimeter' | 'weather' | 'forecast' | 'sheet';
-
-export interface FireReadyLayers {
-  perimeters: { visible: boolean };
-  spread: { visible: boolean };
-  weather: Partial<Record<string, { visible?: boolean } | undefined>>;
-  incidentMap: { mapId: string | null; series: string | null };
+export interface FireReadySignals {
+  perimeter: boolean;
+  weather: boolean;
+  forecast: boolean;
+  sheet: boolean;
 }
 
-export function fireReadyNeeds(layers: FireReadyLayers): FireReadyNeed[] {
-  const needs: FireReadyNeed[] = [];
-  const weatherOn = Object.values(layers.weather).some((p) => p?.visible);
-  if (weatherOn) needs.push('weather');
-  if (layers.spread.visible) needs.push('forecast');
-  if (layers.incidentMap.mapId || layers.incidentMap.series) needs.push('sheet');
-  if (needs.length === 0 && layers.perimeters.visible) needs.push('perimeter');
-  return needs;
+export function isFireViewReady(s: FireReadySignals): boolean {
+  return s.perimeter && s.weather && s.forecast && s.sheet;
 }
 
-export function isFireViewReady(args: {
-  needs: FireReadyNeed[];
-  perimeterLanded: boolean;
-  weatherLanded: boolean;
-  forecastLanded: boolean;
-  sheetLanded: boolean;
+/**
+ * Perimeter settle: nothing to wait for when the layer is off; pending until
+ * the version index query resolves; then either there is no version to draw
+ * (settled — some fires have no perimeter yet) or the feature must land.
+ */
+export function isPerimeterSettled(args: {
+  visible: boolean;
+  indexLoaded: boolean;
+  hasVersion: boolean;
+  featureLanded: boolean;
 }): boolean {
-  return args.needs.every((need) => {
-    if (need === 'perimeter') return args.perimeterLanded;
-    if (need === 'weather') return args.weatherLanded;
-    if (need === 'forecast') return args.forecastLanded;
-    return args.sheetLanded;
-  });
+  if (!args.visible) return true;
+  if (!args.indexLoaded) return false;
+  if (!args.hasVersion) return true;
+  return args.featureLanded;
 }
