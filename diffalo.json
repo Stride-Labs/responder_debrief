@@ -2,26 +2,41 @@
   "$schema": "https://www.diffalo.com/schema/diffalo-v1.json",
   "version": 1,
   "app": {
-    "dev": "cd frontend && npm run dev -- --port 5199 --strictPort",
-    "cwd": ".",
-    "reviewMode": "manual",
-    "env": {
-      "VITE_DATA_BASE_URL": "https://f004.backblazeb2.com/file/responder-debrief-data"
-    }
+    "install": "npm ci",
+    "dev": "npm run dev",
+    "cwd": "frontend",
+    "reviewMode": "manual"
+  },
+  "env": {
+    "VITE_DATA_BASE_URL": "https://f005.backblazeb2.com/file/responder-debrief-data"
   },
   "recordable": {
-    "auth": {
-      "mode": "storage-state"
-    },
-    "expectText": [
-      "Responder Brief"
+    "entryPath": "/",
+    "expectText": ["Responder Brief"],
+    "absentText": [
+      "Sign in",
+      "Log in",
+      "Unauthorized",
+      "Something went wrong",
+      "Cannot GET"
     ],
-    "absentText": [],
-    "stateCommand": "node frontend/scripts/diffalo-state.mjs",
     "places": {
       "directory": "/",
-      "fire": "/fire/coleman-creek-or-2026-07-25",
-      "health": "/health"
-    }
+      "health": "/health",
+      "sources": "/sources"
+    },
+    "routes": {
+      "/": {
+        "expectText": ["Wildfire situational awareness for responders"]
+      },
+      "/health": {
+        "expectText": ["Ingestion health"]
+      },
+      "/sources": {
+        "expectText": ["Sources"]
+      }
+    },
+    "stateCommand": "node ../scripts/diffalo-state.mjs",
+    "stateCwd": "."
   }
 }
