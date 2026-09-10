@@ -33,8 +33,7 @@ import {
 import { resolvePerimeterVersion } from '../timeline/framePlan';
 import type { LayerContext, LayerManager } from './layerTypes';
 
-import { firePinsLayer } from './layers/firePinsLayer';
-import { perimeterLayer } from './layers/perimeterLayer';
+import { fireReadyNeeds, isFireViewReady } from './fireReady';
 import { useHistoricPerimeters, useIncidents } from '../api/queries';
 
 function histBoxForIncidents(
@@ -43,11 +42,13 @@ function histBoxForIncidents(
   const c = catalogFire?.coordinates;
   return c ? [c[0] - 0.6, c[1] - 0.5, c[0] + 0.6, c[1] + 0.5] : null;
 }
+import { firePinsLayer } from './layers/firePinsLayer';
+import { perimeterLayer } from './layers/perimeterLayer';
 import { hotspotLayer } from './layers/hotspotLayer';
-import { spreadForecastLayer } from './layers/spreadForecastLayer';
-import { weatherLayers } from './layers/weatherLayers';
+import { isForecastPainted, spreadForecastLayer } from './layers/spreadForecastLayer';
+import { isWeatherPainted, weatherLayers } from './layers/weatherLayers';
 import { windArrowsLayer } from './layers/windArrowsLayer';
-import { incidentMapLayer } from './layers/incidentMapLayer';
+import { incidentMapLayer, isIncidentMapPainted } from './layers/incidentMapLayer';
 import { labelContrastLayer } from './layers/labelContrast';
 import { basemapUnderlay } from './layers/basemapUnderlay';
 import { drawLayer } from './layers/drawLayer';
@@ -120,7 +121,7 @@ function isMapUsable(map: MlMap): boolean {
   return !internals._removed && !!internals.style;
 }
 
-export function useMapLayerSync(): boolean {
+export function useMapLayerSync(): { perimeterReady: boolean; viewReady: boolean } {
   const map = useMap();
   const view = useStore((s) => s.view);
   const layers = useStore((s) => s.layers);
@@ -392,6 +393,29 @@ export function useMapLayerSync(): boolean {
     }
   }, [map, view, spreadRun, catalogFire, fires, perimeterFeature]);
 
-  // Diffalo records once this is true — the perimeter GeoJSON has landed.
-  return perimeterFeature != null;
+  // Diffalo waits on viewReady: every layer this view turned on has painted.
+  // Overlay loads finish inside the managers, so poll — a ctx tick alone
+  // misses the image / tar landing.
+  const ctxRef = useRef(ctx);
+  ctxRef.current = ctx;
+  const [viewReady, setViewReady] = useState(false);
+  useEffect(() => {
+    const tick = () => {
+      const c = ctxRef.current;
+      setViewReady(
+        isFireViewReady({
+          needs: fireReadyNeeds(c.layers),
+          perimeterLanded: c.perimeterFeature != null,
+          weatherLanded: isWeatherPainted(c),
+          forecastLanded: isForecastPainted(c),
+          sheetLanded: isIncidentMapPainted(c),
+        }),
+      );
+    };
+    tick();
+    const id = setInterval(tick, 100);
+    return () => clearInterval(id);
+  }, [map]);
+
+  return { perimeterReady: perimeterFeature != null, viewReady };
 }

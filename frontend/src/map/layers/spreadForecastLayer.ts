@@ -225,6 +225,20 @@ function beginLoad(
     });
 }
 
+/** True when the adopted renderer matches the current product / percentile. */
+export function isForecastPainted(ctx: {
+  layers: { spread: { visible: boolean; product: SpreadProduct; percentile: number } };
+  spreadRun: PyrecastRun | null;
+}): boolean {
+  if (!ctx.layers.spread.visible) return true;
+  const run = ctx.spreadRun;
+  if (!run) return false;
+  const pct = nearestPercentile(productPercentiles(run, ctx.layers.spread.product), ctx.layers.spread.percentile);
+  if (pct === null) return false;
+  const key = `${run.workspace}|${ctx.layers.spread.product}|${pct}`;
+  return rendererKey === key && renderer != null;
+}
+
 export const spreadForecastLayer: LayerManager = {
   mount(map) {
     mapRef = map;

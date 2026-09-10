@@ -30,10 +30,17 @@ describe('diffalo state result', () => {
 
   it('asks the recording browser to wait on a testid the app renders', () => {
     const shell = assembleResult('fire-detail', '/fire/x', { ready: 'shell' });
-    const perimeter = assembleResult('fire-detail', '/fire/x', {});
+    const fire = assembleResult('fire-detail', '/fire/x', {});
+    const overlay = assembleResult('fire-map-overlay', '/fire/x', {
+      ff: 'crown-fire.90',
+      wx: 'smoke',
+      ready: 'perimeter',
+    });
     expect(shell.ready).toEqual({ testId: 'rd-fire-shell' });
-    expect(perimeter.ready).toEqual({ testId: 'rd-fire-perimeter' });
+    expect(fire.ready).toEqual({ testId: 'rd-fire-ready' });
+    expect(overlay.ready).toEqual({ testId: 'rd-fire-ready' });
     expect(read('frontend/src/panels/BackControl.tsx')).toContain('data-testid="rd-fire-shell"');
+    expect(read('frontend/src/app/App.tsx')).toContain('data-testid="rd-fire-ready"');
     expect(read('frontend/src/app/App.tsx')).toContain('data-testid="rd-fire-perimeter"');
   });
 });
