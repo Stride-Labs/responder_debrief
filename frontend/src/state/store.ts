@@ -157,6 +157,8 @@ export interface AppState {
     /** Basemap ground: vector map (default), satellite, or USGS topo. */
     basemap: 'map' | 'satellite' | 'topo';
     sidebarCollapsed: boolean;
+    /** Legend card folded down to its header bar (see LegendBar). */
+    legendCollapsed: boolean;
     sheetSnap: 'peek' | 'half' | 'full';
     /** which product's legend the LegendBar shows (qualified key, see LegendBar) */
     legendKey: string | null;
@@ -215,6 +217,7 @@ export interface AppState {
     setTheme(theme: 'dark' | 'light'): void;
     setSidebarTab(tab: AppState['ui']['sidebarTab']): void;
     setSidebarCollapsed(collapsed: boolean): void;
+    setLegendCollapsed(collapsed: boolean): void;
     setBasemap(basemap: AppState['ui']['basemap']): void;
     setDrawTool(tool: DrawTool): void;
     /** Replace the feature set, pushing the previous onto the undo stack. */
@@ -324,6 +327,7 @@ export const useStore = create<AppState>((set, get) => ({
     sidebarTab: 'overview',
     basemap: 'map',
     sidebarCollapsed: false,
+    legendCollapsed: false,
     sheetSnap: 'peek',
     legendKey: null,
     toast: null,
@@ -557,6 +561,7 @@ export const useStore = create<AppState>((set, get) => ({
     },
     setSidebarTab: (sidebarTab) => set((s) => ({ ui: { ...s.ui, sidebarTab } })),
     setSidebarCollapsed: (sidebarCollapsed) => set((s) => ({ ui: { ...s.ui, sidebarCollapsed } })),
+    setLegendCollapsed: (legendCollapsed) => set((s) => ({ ui: { ...s.ui, legendCollapsed } })),
     setBasemap: (basemap) => {
       track('basemap_changed', { basemap });
       set((s) => ({ ui: { ...s.ui, basemap } }));

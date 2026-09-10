@@ -1061,6 +1061,38 @@
   right: 60px;
 }
 
+/* Folded, the card is only its header, so it wants a tighter gutter. */
+.rd-legendbar--folded {
+  padding: 5px 10px;
+}
+
+.rd-legendbar-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  /* Folded, the card shrinks to this row; a floor keeps the bar from
+     collapsing to the width of the word and the chevron from jumping. */
+  min-width: 116px;
+  color: var(--color-text-muted);
+}
+.rd-legendbar-header:hover {
+  color: var(--color-text);
+}
+/* Open, the header needs a rule to read as a header and not as one more
+   uppercase row in the stack. */
+.rd-legendbar:not(.rd-legendbar--folded) .rd-legendbar-header {
+  padding-bottom: 5px;
+  border-bottom: 1px solid var(--color-border);
+}
+
+.rd-legendbar-title {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
 .rd-legendbar-caption,
 .rd-legendbar-label {
   font-size: 10px;

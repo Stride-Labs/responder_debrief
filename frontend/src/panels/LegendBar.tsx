@@ -1,7 +1,8 @@
 /**
  * Small legend card, bottom-right above the timeline. Mirrors the active
  * spread product (ui.legendKey = "spread:{product}") and every visible
- * weather layer.
+ * weather layer. Folds to its header bar so it can be pushed out of the way
+ * without losing track of the map underneath.
  */
 import { LegendImg } from '../utils/LegendImg';
 import { useMemo } from 'react';
@@ -32,6 +33,22 @@ interface WeatherLegendRow {
   units?: string;
 }
 
+/** Points down when the card is open, up when it has folded away. */
+function Chevron({ collapsed }: { collapsed: boolean }) {
+  return (
+    <svg
+      width="12"
+      height="12"
+      viewBox="0 0 14 14"
+      fill="none"
+      aria-hidden="true"
+      style={{ transform: collapsed ? 'rotate(180deg)' : undefined }}
+    >
+      <path d="M2.5 5L7 9.5L11.5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
 export function LegendBar() {
   const legendKey = useStore((s) => s.ui.legendKey);
   const weatherState = useStore((s) => s.layers.weather);
@@ -39,6 +56,8 @@ export function LegendBar() {
   const toaMode = useStore((s) => s.layers.spread.toaMode);
   const toaWithinHours = useStore((s) => s.layers.spread.toaWithinHours);
   const sidebarCollapsed = useStore((s) => s.ui.sidebarCollapsed);
+  const collapsed = useStore((s) => s.ui.legendCollapsed);
+  const setLegendCollapsed = useStore((s) => s.actions.setLegendCollapsed);
   const view = useStore((s) => s.view);
   const corneaId = view.mode === 'fire' ? view.corneaId : null;
 
@@ -102,43 +121,61 @@ export function LegendBar() {
   if (!showSpread && weatherRows.length === 0) return null;
 
   return (
-    <div className={`rd-legendbar${sidebarCollapsed ? ' rd-legendbar--rail' : ''}`}>
-      {showSpread && spreadProduct && (
-        <div className="rd-legendbar-spread">
-          <div className="rd-legendbar-caption">{SPREAD_PRODUCT_LABELS[spreadProduct]}</div>
-          {isToa && run ? (
-            // Mirror whichever ToA legend the Forecast tab is showing.
-            toaMode === 'whole' ? (
-              <ToaBandLegend
-                horizonHours={run.horizon_hours}
-                withinHours={clampWithinHours(toaWithinHours, run.horizon_hours)}
-              />
-            ) : (
-              <ToaTimelineLegend run={run} timezone={fire?.timezone ?? null} />
-            )
-          ) : spreadMeta?.legend_labels && spreadMeta.legend_stops ? (
-            <div className="rd-swatch-row">
-              {spreadMeta.legend_stops.map(([, color], i) => (
-                <LegendSwatch key={i} color={color} label={spreadMeta.legend_labels?.[i] ?? ''} />
-              ))}
+    <div
+      className={`rd-legendbar${sidebarCollapsed ? ' rd-legendbar--rail' : ''}${
+        collapsed ? ' rd-legendbar--folded' : ''
+      }`}
+    >
+      <button
+        type="button"
+        className="rd-legendbar-header"
+        aria-expanded={!collapsed}
+        title={collapsed ? 'Show legend' : 'Hide legend'}
+        onClick={() => setLegendCollapsed(!collapsed)}
+      >
+        <span className="rd-legendbar-title">Legend</span>
+        <Chevron collapsed={collapsed} />
+      </button>
+      {!collapsed && (
+        <>
+          {showSpread && spreadProduct && (
+            <div className="rd-legendbar-spread">
+              <div className="rd-legendbar-caption">{SPREAD_PRODUCT_LABELS[spreadProduct]}</div>
+              {isToa && run ? (
+                // Mirror whichever ToA legend the Forecast tab is showing.
+                toaMode === 'whole' ? (
+                  <ToaBandLegend
+                    horizonHours={run.horizon_hours}
+                    withinHours={clampWithinHours(toaWithinHours, run.horizon_hours)}
+                  />
+                ) : (
+                  <ToaTimelineLegend run={run} timezone={fire?.timezone ?? null} />
+                )
+              ) : spreadMeta?.legend_labels && spreadMeta.legend_stops ? (
+                <div className="rd-swatch-row">
+                  {spreadMeta.legend_stops.map(([, color], i) => (
+                    <LegendSwatch key={i} color={color} label={spreadMeta.legend_labels?.[i] ?? ''} />
+                  ))}
+                </div>
+              ) : spreadMeta?.legend_stops ? (
+                <GradientLegend stops={spreadMeta.legend_stops} units={spreadMeta.units ?? undefined} />
+              ) : spreadLegendSrc ? (
+                <LegendImg src={spreadLegendSrc} alt="Forecast legend" />
+              ) : null}
             </div>
-          ) : spreadMeta?.legend_stops ? (
-            <GradientLegend stops={spreadMeta.legend_stops} units={spreadMeta.units ?? undefined} />
-          ) : spreadLegendSrc ? (
-            <LegendImg src={spreadLegendSrc} alt="Forecast legend" />
-          ) : null}
-        </div>
-      )}
-      {weatherRows.map((row) => (
-        <div key={row.product} className="rd-legendbar-weather-row">
-          <span className="rd-legendbar-label">{row.label}</span>
-          {row.stops ? (
-            <GradientLegend stops={row.stops} units={row.units} />
-          ) : (
-            <LegendImg src={row.url} alt={`${row.label} legend`} />
           )}
-        </div>
-      ))}
+          {weatherRows.map((row) => (
+            <div key={row.product} className="rd-legendbar-weather-row">
+              <span className="rd-legendbar-label">{row.label}</span>
+              {row.stops ? (
+                <GradientLegend stops={row.stops} units={row.units} />
+              ) : (
+                <LegendImg src={row.url} alt={`${row.label} legend`} />
+              )}
+            </div>
+          ))}
+        </>
+      )}
     </div>
   );
 }
