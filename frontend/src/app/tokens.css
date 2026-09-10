@@ -54,6 +54,15 @@
   --timeline-h: 110px;
 }
 
+/* Tablet keeps a narrower panel. It lives here, on the token, because the
+   map overlays that have to clear the panel (legend bar, toolbar) size
+   themselves off --sidebar-w — one width, one place to change it. */
+@media (min-width: 768px) and (max-width: 1023px) {
+  :root {
+    --sidebar-w: 320px;
+  }
+}
+
 :root[data-theme='dark'] {
   --color-bg: #1a1218;
   --color-surface: #241c21;

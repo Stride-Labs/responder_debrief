@@ -1285,15 +1285,9 @@
 
 /* ---------- Responsive ---------- */
 
-/* tablet: narrower sidebar overlay */
-@media (min-width: 768px) and (max-width: 1023px) {
-  .rd-sidebar {
-    width: 320px;
-  }
-  .rd-sidebar--collapsed {
-    width: 48px;
-  }
-}
+/* Tablet has no block of its own: the narrower panel is a --sidebar-w
+   retune in tokens.css, and every overlay that clears the panel sizes off
+   that token. */
 
 @media (max-width: 767px) {
   .rd-lightbox {
@@ -1804,8 +1798,25 @@
   right: auto;
   z-index: 28;
   display: flex;
+  flex-wrap: wrap;
   align-items: flex-start;
   gap: 8px;
+}
+/* The toolbar out-stacks the sidebar, so left to itself the row runs on
+   under the panel (iPad: 834px wide, ~600px of controls, a 320px panel).
+   Cap it at the map the panel leaves behind and the search card wraps below
+   the back and basemap pills instead. Collapsed, the panel is a 48px rail
+   and the row fits on one line again — the desktop shape. */
+.rd-app:has(.rd-sidebar) .rd-map-toolbar {
+  max-width: calc(100% - var(--sidebar-w) - 24px);
+}
+.rd-app:has(.rd-sidebar--collapsed) .rd-map-toolbar {
+  max-width: calc(100% - 72px);
+}
+/* Under the cap the pills would rather squash their labels than let the
+   search wrap; hold every item at its natural width so the wrap wins. */
+.rd-map-toolbar > * {
+  flex: 0 0 auto;
 }
 .rd-sd-control {
   flex: 0 0 auto;
