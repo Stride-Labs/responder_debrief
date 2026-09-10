@@ -36,7 +36,6 @@
         "expectText": ["Sources"]
       }
     },
-    "stateCommand": "node ../scripts/diffalo-state.mjs",
-    "stateCwd": "."
+    "stateCommand": "node ../scripts/diffalo-state.mjs"
   }
 }
