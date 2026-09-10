@@ -22,6 +22,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const FIRE_API = 'https://fire-api-prod.web.app';
+const DATA_BASE_URL = 'https://f005.backblazeb2.com/file/responder-debrief-data';
 
 /**
  * First choice when it is still active; otherwise the largest active fire that
@@ -76,7 +77,11 @@ function queryString(args) {
   return str ? `?${str}` : '';
 }
 
-async function pickActiveFire() {
+function normId(id) {
+  return String(id ?? '').replace(/[{}]/g, '').toLowerCase();
+}
+
+async function fetchActiveFires() {
   const fields = 'cornea_id,unique_slug,post_title,acres,poly_last_updated';
   // The whole active list, not a page of it: /fires is ordered by last update,
   // so limit=20 left out a 172k-acre fire and picked a 0-acre one instead.
@@ -86,7 +91,11 @@ async function pickActiveFire() {
     throw new Error(`fire-api ${res.status} for ${url}`);
   }
   const body = await res.json();
-  const fires = Array.isArray(body?.fires) ? body.fires : [];
+  return Array.isArray(body?.fires) ? body.fires : [];
+}
+
+async function pickActiveFire() {
+  const fires = await fetchActiveFires();
   const preferred = fires.find((f) => f?.unique_slug === PREFERRED_SLUG);
   if (preferred?.cornea_id) return preferred;
   const withPerim = fires
@@ -97,6 +106,47 @@ async function pickActiveFire() {
     throw new Error('fire-api returned no active fires with cornea_id');
   }
   return fire;
+}
+
+/**
+ * A story that asks for `map` needs a live fire that actually has a tiled
+ * incident-map sheet. The preferred fire often does not. Never pin a slug;
+ * join today's fire-api roster to the catalog and take the largest match.
+ */
+async function pickFireWithIncidentMap() {
+  const [fires, catRes] = await Promise.all([
+    fetchActiveFires(),
+    fetch(`${DATA_BASE_URL}/catalogs/catalog.json`),
+  ]);
+  if (!catRes.ok) {
+    throw new Error(`catalog ${catRes.status} for catalogs/catalog.json`);
+  }
+  const catalog = await catRes.json();
+  const catalogFires = Array.isArray(catalog?.fires) ? catalog.fires : [];
+  const mapped = new Map();
+  for (const f of catalogFires) {
+    if (f?.incident_manifest && f.has_incident_maps !== false) {
+      mapped.set(normId(f.cornea_id), f);
+    }
+  }
+  const match = fires
+    .filter((f) => f?.cornea_id && mapped.has(normId(f.cornea_id)))
+    .sort((a, b) => (Number(b.acres) || 0) - (Number(a.acres) || 0));
+  const fire = match[0];
+  const cat = fire ? mapped.get(normId(fire.cornea_id)) : null;
+  if (!fire || !cat?.incident_manifest) {
+    throw new Error('no active fire with an incident-map manifest');
+  }
+  const manRes = await fetch(`${DATA_BASE_URL}${cat.incident_manifest}`);
+  if (!manRes.ok) {
+    throw new Error(`catalog ${manRes.status} for ${cat.incident_manifest}`);
+  }
+  const manifest = await manRes.json();
+  const sheet = (manifest?.maps ?? []).find((m) => m?.id && m.tiles);
+  if (!sheet) {
+    throw new Error(`manifest ${cat.incident_manifest} has no tiled sheet`);
+  }
+  return { fire, mapId: sheet.id };
 }
 
 export const FAMILIES = {
@@ -133,11 +183,15 @@ export const FAMILIES = {
       testId: args.ready === 'shell' ? FIRE_READY.shell : FIRE_READY.perimeter,
     }),
     build: async (args) => {
-      const fire = await pickActiveFire();
+      const picked = args.map !== undefined
+        ? await pickFireWithIncidentMap()
+        : { fire: await pickActiveFire(), mapId: null };
+      const fire = picked.fire;
       const pathname = fire.unique_slug
         ? slugToPathname(fire.unique_slug)
         : `/fire/${fire.cornea_id}`;
-      return `${pathname}${queryString(args)}`;
+      const queryArgs = picked.mapId ? { ...args, map: picked.mapId } : args;
+      return `${pathname}${queryString(queryArgs)}`;
     },
   },
   health: {
