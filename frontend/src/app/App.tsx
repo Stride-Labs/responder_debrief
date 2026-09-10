@@ -27,9 +27,12 @@ import { useFires } from '../api/queries';
 import { applyViewState, buildSearch, decodeSearch } from './urlState';
 
 function MapLayerBridge() {
-  useMapLayerSync();
+  const perimeterReady = useMapLayerSync();
   useTimelineDomain();
-  return null;
+  if (!perimeterReady) return null;
+  return (
+    <div className="rd-fire-perimeter-ready" data-testid="rd-fire-perimeter" aria-hidden="true" />
+  );
 }
 
 /**
