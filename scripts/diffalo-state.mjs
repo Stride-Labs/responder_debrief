@@ -240,11 +240,15 @@ export const FAMILIES = {
       wx: { parts: WEATHER_PRODUCTS },
       ff: { products: SPREAD_PRODUCTS, percentiles: PERCENTILES },
       bm: { enum: BASEMAPS },
-      ready: { enum: ['shell', 'perimeter'] },
     },
-    ready: (args) => ({
-      testId: args.ready === 'shell' ? FIRE_READY.shell : FIRE_READY.perimeter,
-    }),
+    // The mounted fire chrome, and deliberately not the perimeter outline.
+    // This family seeds from live data, so it cannot promise the fire it picks
+    // has a perimeter at all — waiting on that outline is what left overlay
+    // stories with no recording. The overlay rasters are what the story is
+    // about, but they are the wrong thing to gate on for the same reason: a
+    // product missing from today's run, or a playhead outside its coverage,
+    // is a thinner review, not a review that should refuse to start.
+    ready: () => ({ testId: FIRE_READY.shell }),
     // `map` is chosen here, not passed in: sheet ids are per-fire and rotate
     // with the FTP mirror, so a pinned one goes stale within the day.
     build: async (args) => {
