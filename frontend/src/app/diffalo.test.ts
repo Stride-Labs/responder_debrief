@@ -68,4 +68,24 @@ describe('diffalo.json', () => {
       'https://f005.backblazeb2.com/file/responder-debrief-data',
     );
   });
+
+  // These tests import node: builtins. The app tsconfig has no Node types,
+  // and `npm run build` runs `tsc --noEmit` first — leaving them included
+  // fails Pages deploys.
+  it('keeps Node-importing tests out of the app typecheck', () => {
+    const tsconfig = JSON.parse(read('frontend/tsconfig.json')) as {
+      exclude?: string[];
+    };
+    expect(tsconfig.exclude).toContain('src/**/*.test.ts');
+  });
+});
+
+describe('diffalo scaffolding doc', () => {
+  // An earlier draft of this page told agents to add places.fire and
+  // /fire/review, which is the stale-slug trap the rest of this file locks.
+  it('does not tell agents to pin a fire place or review path', () => {
+    const doc = read('docs/diffalo-review-scaffolding.md');
+    expect(doc).not.toMatch(/places\.fire/);
+    expect(doc).not.toContain('/fire/review');
+  });
 });

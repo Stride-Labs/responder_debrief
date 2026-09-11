@@ -1,146 +1,93 @@
 # Diffalo review scaffolding
 
-What we learned trying to film a fire-page review, and what to build so the next
-one records on the first attempt.
+What this repo needs so Diffalo can record a review. Reviews are `manual`:
+they run only when someone asks.
 
-Written after the "purple perimeter + 2x scrubber" review, which took six runs to
-start recording.
+This app has no accounts. The generic Diffalo skill that says to mint one is
+wrong here. The Cursor rule in `.cursor/rules/diffalo-state.mdc` is the
+short version of this page.
 
-## What broke, in order
+## What is in place
 
-**1. A fake account looks like login.**
-`scripts/diffalo-state.mjs` returned `{ route, account }`. This app has no
-sign-in. Diffalo saw an account and required a sign-in command, so every fire
-story failed before a frame was recorded:
+`diffalo.json` names the static screens (`/`, `/health`, `/sources`) and
+points at `scripts/diffalo-state.mjs`. It pins no fire pathname. Active fires
+rotate; `routeKey` is an exact match, so a hardcoded `/fire/<slug>` goes stale
+and the dump-dom gate then applies the home tagline to a fire page — a 90s
+timeout.
 
-> state "fire-detail" returned an account, but no sign-in command is configured.
+`env` lives at the document root, not under `app`. The `app` block reads only
+`install`, `dev`, and `cwd`. Nested `app.env` is dropped with no warning.
+The data host is `f005`. `f004` 404s every path in this bucket.
 
-**2. The directory ready-check was applied to the fire page.**
-`recordable.expectText` is the home tagline. A fire URL never paints that
-sentence, so the recorder waited 90s and gave up:
+Global `expectText` is the `<title>` ("Responder Brief"). That is the dump-dom
+gate and means only "the SPA shell loaded". Per-route `expectText` replaces
+the global list, so only the static pages get stronger text.
 
-> never rendered "Wildfire situational awareness for responders" after 90s
+Map readiness is the state command's `ready` field, which the recording
+browser waits on:
 
-**3. The first live fire is a bad review fixture.**
-`/fires?active=true&limit=20` sorts by last updated. We landed on Chicken:
-0 acres, no perimeter. Even a perfect jump would have filmed an empty map.
+- `rd-fire-shell` — the existing «All fires» back button, once the fire chrome
+  has mounted.
+- `rd-fire-perimeter` — a hidden 1×1 marker, once the perimeter GeoJSON has
+  landed. GeoJSON landed is not the same as the outline painted.
 
-**4. A fire URL is not a loaded fire.**
-`/fire/<slug>` first renders a resolving shell (see `App.tsx`) until the national
-fires index arrives and the slug resolves to a `cornea_id`. `FireMapView` — the
-map, perimeter outline, timeline Play button, "Acres", "All fires" — mounts only
-after that. Waiting on "Acres" or "All fires" timed out for the same reason.
+Stories that need a fire use `state: { name: "fire-detail" }` (or
+`fire-map-overlay`) and no `place`. There is deliberately no `fire` place.
 
-**5. Three sources of truth drifted.**
-`recordable.places.fire`, `recordable.routes["/fire/…"]`, the state command's
-returned `route`, and each story's `startRoute` in `brief.json` must be the same
-path. When they were not, Diffalo applied the directory ready-check to the fire
-URL.
+The Vite dev server strips `index.html`'s `upgrade-insecure-requests` CSP
+(`apply: 'serve'`). A recording reached over LAN/Tailscale otherwise upgrades
+every module request to https and lands on a blank page. The production build
+keeps the tag.
 
-**6. The generic Diffalo skill is wrong for this repo.**
-It says to make a new family's `run` "mint a fresh account". Doing that is
-exactly failure 1. This app has no accounts.
+## State families
 
-## What has to be true
+Run from `frontend/` (that is `app.cwd`):
 
-Diffalo does three separate jobs, and we kept conflating them:
+```
+node ../scripts/diffalo-state.mjs list
+node ../scripts/diffalo-state.mjs run <name> --args '<json>'
+```
 
-| Job | What it needs |
+| Family | What it opens |
 | --- | --- |
-| Jump | A route Diffalo can open |
-| Ready | Painted text that exists *only* when that screen is really up |
-| State | The data that screen needs — a real fire with a perimeter, not a login |
+| `directory` | `/` |
+| `fire-detail` | a live fire with a published perimeter; default ready is the perimeter marker |
+| `fire-map-overlay` | a live fire whose forecast still covers *now* and that has a georeferenced map sheet; waits on the fire chrome, not the outline |
+| `health` | `/health` |
+| `sources` | `/sources` |
 
-For this app specifically:
+Every `run` returns `{ route }` and, for fire families, `{ ready }`. Never
+`account`. Never `clientState`. Diffalo would treat those as a login.
 
-- Return `{ route }` only. Never `account`.
-- Home and fire are different ready states. Home can use the tagline; fire cannot.
-- Ready text must not be "Responder Brief 2". That string is in `<title>`, in the
-  OG meta tags, and on the resolving placeholder — it passes before the map exists.
-- Pick the review fire for the camera, not the newest incident: it needs a
-  published perimeter and enough acres for the outline to read on screen.
-- Slug deep links wait on the network, so the recorder starts too early unless the
-  ready text appears only after `FireMapView` mounts.
-- `place` + state `route` + `startRoute` + `routes[path]` must be one URL.
-- Braced fire ids in the path (`{GUID}` → `%7B…%7D`) fight the URL bar. Prefer
-  slugs with no special characters.
+`fire-detail` prefers Little Giant when that fire is still active; otherwise
+the largest active fire with a published perimeter. `fire-map-overlay` picks
+from catalogs at run time. Sheet ids and slugs rotate — do not pin them.
 
-## What is still fragile
+If the fire API or the B2 catalogs are unreachable, the story fails as
+"state command failed" rather than recording a broken frame.
 
-The pin that finally recorded — `/fire/little-giant-wa-2026-07-16` with
-`expectText: "Responder Brief 2"` — starts a video but does **not** guarantee the
-outline or the timeline are on screen when the clip begins. That string is in the
-document head, so the check can pass on the loading shell. Little Giant will also
-eventually leave the active list, at which point place, route, and state disagree
-again.
+## What broke before this existed
 
-Treat the current setup as "it recorded", not "it recorded the right frame".
+1. A state result with `account` made Diffalo demand a sign-in command.
+2. Global `expectText` was the home tagline, so fire pages timed out at 90s.
+3. `/fires?limit=20` picked a 0-acre fire with no perimeter.
+4. "Responder Brief" is in `<title>` and on the resolving placeholder, so it
+   passed while the map was still a blank shell.
+5. A pinned `/fire/<slug>` in `places` / `routes` went stale within a week.
+6. `env` under `app` was ignored; `f004` 404s this bucket.
 
-## Plan
-
-Three layers, in this order. A later layer does not help while an earlier one is
-still wrong.
-
-### 1. One stable fire URL for reviews
-
-Add a review-only path the app always understands, e.g. `/fire/review`, which
-selects a known-good fire immediately from a baked id rather than "first active".
-Same URL every time, no slug wait, no `%7B…%7D` encoding.
-
-Then in `diffalo.json`:
-
-- `places.fire` → `/fire/review`
-- `routes["/fire/review"].expectText` → the fire-ready string from step 2
-- state family `fire-detail` → always returns `/fire/review`
-
-Stories then only name `state: fire-detail` and `place: fire`. Nobody invents a
-live slug.
-
-### 2. Ready text that means "the map is up"
-
-Paint a unique string only after the fire shell has mounted — the back control's
-"All fires", or a dedicated marker once the perimeter source has data.
-
-Rules:
-
-- The resolving placeholder must not contain that string.
-- `index.html` title and meta must not contain that string.
-- Fire `expectText` must be that string, not the home wordmark.
-
-Until that string exists, Diffalo should refuse to record. That is the point.
-
-For outline stories, go further: do not paint the ready marker until the selected
-perimeter is actually on the map, or the clip opens on a blank basemap.
-
-### 3. A state command that cannot lie
-
-Keep `scripts/diffalo-state.mjs`, but constrain it:
-
-- `run` returns `{ route }` only, never `account`.
-- `fire-detail` only ever returns `/fire/review`.
-- `list` stays the four families: directory, fire-detail, health, sources.
-- Add `node scripts/diffalo-state.mjs doctor`, which loads `/`, `/health`,
-  `/sources`, and `/fire/review` and asserts each route's ready text. It fails if
-  the fire route is still showing the placeholder.
-
-Run doctor before `diffalo review --brief`. A failing doctor means no recording.
-
-Put these rules in the state script header and in a Cursor rule, so the next agent
-does not mint an account or point `startRoute` at a random live fire.
+The contract tests in `frontend/src/app/diffalo.test.ts` lock the fixes.
+Vitest runs them. `tsc --noEmit` (and `npm run build`) exclude `*.test.ts`,
+because those files import Node builtins the app tsconfig does not type.
 
 ## What not to do
 
-- Do not make the resolving shell paint "Acres" or "All fires" just to satisfy the
-  ready-check.
-- Do not keep pinning whatever the fire API returns first.
-- Do not treat a successful review URL as proof the story filmed the right frame.
-
-## Done when
-
-A fire-page review, run by an agent with no memory of this session:
-
-1. runs doctor and it passes,
-2. runs `--agent` and writes stories using only `fire-detail` + `place: fire`,
-3. runs `--brief` once and records the map with the perimeter visible.
-
-No second guess between fires, no account object, no 90s miss on the home tagline.
+- Do not mint an account or emit `clientState`.
+- Do not add a `fire` key under `places`, or a `/fire/…` entry under `routes`.
+- Do not invent a fire slug in a story. Name a state family.
+- Do not put map-ready strings in `expectText`. Use `ready`.
+- Do not make the resolving shell paint "Acres" or "All fires" just to
+  satisfy a ready-check.
+- Do not treat a successful review URL as proof the story filmed the
+  right frame. `rd-fire-perimeter` means the GeoJSON landed, not that the
+  outline is on screen.
