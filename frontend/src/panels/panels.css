@@ -198,6 +198,34 @@
   /* right padding clears the collapse button AND the settings gear */
   padding: 12px 78px 0 16px;
   border-bottom: 1px solid var(--color-border);
+  /* A white band across the top of the map page, in both themes. Redefining
+     the tokens here recolors the name, state line, stat boxes, badge and tab
+     bar together, so every descendant keeps reading the same variables.
+     `color` has to be restated: body's is already computed, so the value
+     inherited from it would not pick up the override on its own. */
+  --color-text: #1a1a1a;
+  --color-text-muted: #5c5c5c;
+  --color-border: #d9d9d9;
+  --color-card-bg: #f4f4f4;
+  --color-hover-bg: #ebebeb;
+  background: #fff;
+  color: var(--color-text);
+}
+
+/* The collapse chevron and the settings gear float on top of that band
+   instead of sitting inside it, so the scheme has to be handed to them
+   separately — on desktop the gear carries no background of its own and
+   would otherwise be a pale glyph on white. Both keep the dark scheme when
+   the sidebar is collapsed, where they sit on the rail and the map. */
+@media (min-width: 768px) {
+  .rd-sidebar:not(.rd-sidebar--collapsed) .rd-sidebar-collapse,
+  .rd-app:not(:has(.rd-sidebar--collapsed)) .rd-map-toolbar ~ .rd-settings .rd-settings-gear {
+    --color-text: #1a1a1a;
+    --color-text-muted: #5c5c5c;
+    --color-border: #d9d9d9;
+    --color-hover-bg: #ebebeb;
+    --color-surface: #fff;
+  }
 }
 
 .rd-back {
