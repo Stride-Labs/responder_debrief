@@ -18,6 +18,22 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'draw', label: 'Draw' },
 ];
 
+/** An irregular burn outline; CSS tints it with the perimeter layer's color. */
+function PerimeterIcon() {
+  return (
+    <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+      <path
+        d="M3 4.5L6.5 1.8L11.5 3.2L12.2 8.4L8.6 12.3L3.4 11.2L1.8 7.4Z"
+        fill="currentColor"
+        fillOpacity="0.15"
+        stroke="currentColor"
+        strokeWidth="1.5"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
 export function FirePanel({ corneaId }: { corneaId: string }) {
   const { data: fire } = useFire(corneaId);
   const { data: catalog } = useMasterCatalog();
@@ -49,13 +65,16 @@ export function FirePanel({ corneaId }: { corneaId: string }) {
         <div className="rd-fp-titlerow">
           <h2 className="rd-fp-name">{fire?.post_title ?? '…'}</h2>
           {!perimetersVisible && (
+            // The mobile sheet captures pointers that start in this header to
+            // drag itself; without the stop, that capture swallows the tap.
             <button
               type="button"
-              className="rd-fp-show-perim"
-              title="Show fire perimeter on the map"
+              className="rd-fp-perim-restore"
+              title="The perimeter layer is off. Show it on the map."
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => actions.togglePerimeters()}
             >
+              <PerimeterIcon />
               Show perimeter
             </button>
           )}
