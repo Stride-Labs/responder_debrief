@@ -260,7 +260,7 @@ export function DirectoryView() {
         {hasRows && (
           <div className="rd-dir-count">
             {nf(shown.length)}
-            {shown.length === rows.length ? '' : ` of ${nf(rows.length)}`} shown
+            {shown.length === rows.length ? '' : ` of ${nf(rows.length)}`} fires shown
           </div>
         )}
       </div>
