@@ -39,7 +39,7 @@ export function mapStyleDef(theme: 'dark' | 'light', id: string): MapStyleDef {
 }
 
 /** Playback speed default: model-hours advanced per wall-clock second. */
-export const DEFAULT_PLAYBACK_SPEED = 10;
+export const DEFAULT_PLAYBACK_SPEED = 20;
 
 /** Hotspot fetch settings. */
 export const HOTSPOT_LIMIT = 50000;

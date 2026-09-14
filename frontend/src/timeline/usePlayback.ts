@@ -2,7 +2,7 @@
  * Playback engine. Frame-index-driven (never wall-clock): the plan is the
  * sorted union of active layers' frame times from the playhead to the domain
  * end; each step's delay is proportional to the model-time gap it covers
- * (1000/speed ms per model-hour, floor 120 ms).
+ * (1000/speed ms per model-hour, floor 60 ms).
  *
  * Spread renders CONTINUOUSLY client-side from archive data (no frame
  * gating, no prefetching — the spread layer decodes and paints itself; its
@@ -22,7 +22,7 @@ import {
 import { setSpreadArchiveBase } from '../api/wmsUrls';
 import { buildFrameTimes } from './framePlan';
 
-const MIN_STEP_MS = 120;
+const MIN_STEP_MS = 60;
 
 export function usePlayback(): void {
   const view = useStore((s) => s.view);
