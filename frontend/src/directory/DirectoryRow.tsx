@@ -108,12 +108,14 @@ function FireName({ row }: { row: Row }) {
   );
 }
 
+// The column header carries the word "contained", so the cell carries the ring
+// and the number alone.
 function Containment({ row }: { row: Row }) {
-  if (row.containment == null) return null;
+  if (row.containment == null) return <span className="rd-muted">{DASH}</span>;
   return (
-    <span className="rd-dir-contain">
+    <span className="rd-dir-contain rd-dir-contain--cell">
       <ContainmentRing pct={row.containment} />
-      {formatPct(row.containment)} contained
+      {formatPct(row.containment)}
     </span>
   );
 }
@@ -205,7 +207,6 @@ function DirectoryRowImpl({ row, nowMs, variant, onOpen }: DirectoryRowProps) {
         <div className="rd-dir-fire-main">
           <FireName row={row} />
         </div>
-        <Containment row={row} />
       </td>
       <td className="rd-dir-c-loc">
         {row.state || DASH}
@@ -214,6 +215,9 @@ function DirectoryRowImpl({ row, nowMs, variant, onOpen }: DirectoryRowProps) {
         )}
       </td>
       <td className="rd-dir-c-num">{formatAcres(row.acres)}</td>
+      <td className="rd-dir-c-cont">
+        <Containment row={row} />
+      </td>
       <td className="rd-dir-c-started">
         {c.started}
         {c.age && <span className="rd-dir-sub"> ({c.age})</span>}

@@ -289,6 +289,17 @@ describe('compareRows', () => {
     expect(sorted.map((r) => r.name)).toEqual(['A', 'B', 'C']);
   });
 
+  it('sorts containment with unknown percentages last', () => {
+    const most = row({ name: 'A', containment: 90 });
+    const some = row({ name: 'B', containment: 15 });
+    const unknown = row({ name: 'C', containment: null });
+    const sorted = [unknown, some, most].sort((x, y) =>
+      compareRows(x, y, { key: 'containment', dir: 'desc' }),
+    );
+    expect(sorted.map((r) => r.name)).toEqual(['A', 'B', 'C']);
+    expect(compareRows(some, most, { key: 'containment', dir: 'asc' })).toBeLessThan(0);
+  });
+
   it('breaks ties on name so re-sorting is stable', () => {
     const p = row({ name: 'Pine', acres: 100 });
     const q = row({ name: 'Oak', acres: 100 });

@@ -286,6 +286,7 @@ export type DirectorySortKey =
   | 'name'
   | 'state'
   | 'acres'
+  | 'containment'
   | 'started'
   | 'perimeter'
   | 'forecast'
@@ -307,6 +308,8 @@ function sortValue(row: DirectoryRow, key: DirectorySortKey): string | number | 
       return row.state.toLowerCase() || null;
     case 'acres':
       return row.acres;
+    case 'containment':
+      return row.containment;
     case 'started':
       return row.createdOn ? orNull(Date.parse(row.createdOn)) : null;
     case 'perimeter':

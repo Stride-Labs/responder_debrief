@@ -29,6 +29,7 @@ const COLUMNS: { key: DirectorySortKey; label: string; className: string }[] = [
   { key: 'name', label: 'Fire', className: 'rd-dir-c-fire' },
   { key: 'state', label: 'Location', className: 'rd-dir-c-loc' },
   { key: 'acres', label: 'Size', className: 'rd-dir-c-num' },
+  { key: 'containment', label: 'Contained', className: 'rd-dir-c-cont' },
   { key: 'started', label: 'Started', className: 'rd-dir-c-started' },
   { key: 'perimeter', label: 'Perimeter', className: 'rd-dir-c-perim' },
   { key: 'forecast', label: 'Forecast', className: 'rd-dir-c-fcst' },
