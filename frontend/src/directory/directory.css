@@ -44,6 +44,37 @@
   letter-spacing: -0.01em;
 }
 
+.rd-dir-titleline {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+/* The one number a responder scans for, at the size a headline is read at
+   rather than buried in the line of counts below it. */
+.rd-dir-activepill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--color-border);
+  border-radius: 999px;
+  background: var(--color-surface);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.rd-dir-activepill::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--color-accent);
+}
+
 .rd-dir-tagline {
   margin: 4px 0 0;
   font-size: 13.5px;

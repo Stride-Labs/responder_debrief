@@ -194,8 +194,11 @@ export function DirectoryView() {
   const hasRows = rows.length > 0;
 
   const nf = (n: number) => n.toLocaleString('en-US');
+  // The active count leads, in the pill beside the wordmark. What is left here
+  // is the detail that qualifies it, so the number is read once rather than
+  // twice in two type sizes.
   const subtitle = hasRows
-    ? `${nf(summary.active)} active fires · ${nf(summary.withForecast)} with forecasts · ${nf(summary.withIncidentMaps)} with incident maps`
+    ? `${nf(summary.withForecast)} with forecasts · ${nf(summary.withIncidentMaps)} with incident maps`
     : loading
       ? 'Loading the national roster…'
       : 'No fires listed';
@@ -216,7 +219,18 @@ export function DirectoryView() {
     <div className="rd-directory">
       <header className="rd-dir-header">
         <div className="rd-dir-brand">
-          <h1 className="rd-dir-wordmark">Responder Brief</h1>
+          <div className="rd-dir-titleline">
+            <h1 className="rd-dir-wordmark">Responder Brief</h1>
+            {hasRows && (
+              <span
+                className="rd-dir-activepill"
+                data-testid="rd-dir-active-pill"
+                title="Fires reporting activity in the current roster"
+              >
+                {nf(summary.active)} active now
+              </span>
+            )}
+          </div>
           {/* On-page copy of the meta description: search engines prefer
               prominent prose near the top over footer boilerplate. */}
           <p className="rd-dir-tagline">
