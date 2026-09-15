@@ -1,4 +1,9 @@
-/** Selected-fire panel: header, badge, stats strip, tab bar + active tab. */
+/**
+ * Selected-fire panel: header, badge, stats strip, tab bar + active tab.
+ * The header also carries the perimeter restore button — it appears beside the
+ * fire name only while that layer is off, so the outline is one click away
+ * without hunting for the Layers tab.
+ */
 import { useMemo } from 'react';
 import { DisclaimerFooter } from './DisclaimerFooter';
 import { useFire, useMasterCatalog } from '../api/queries';

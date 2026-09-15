@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { parseLocation, routePath } from './router';
-import { buildSearch, decodeSearch, encodeTime, parseTime } from './urlState';
+import { applyViewState, buildSearch, decodeSearch, encodeTime, parseTime } from './urlState';
 import type { AppState } from '../state/store';
 
 // The real store touches `document` at module load (theme bootstrap), and
@@ -131,6 +131,35 @@ describe('fireUrl slug resolution', () => {
     expect(urlIdForFire('{6B0C}')).toBe('big-grass-or-2026-07-23');
     expect(urlIdForFire('{not-in-index}')).toBe('{not-in-index}');
     resetFiresForTest();
+  });
+});
+
+describe('perimeters url param', () => {
+  it('round-trips pm=0', () => {
+    const s = mkState();
+    (s.layers as { perimeters: { visible: boolean } }).perimeters = { visible: false };
+    const search = buildSearch(s);
+    expect(search).toContain('pm=0');
+    expect(decodeSearch(search).perimeters).toBe(false);
+    expect(decodeSearch('?').perimeters).toBeUndefined();
+  });
+
+  it('a pm=0 link hides the layer, and only when it is still on', () => {
+    // The hidden layer is what puts the "Show perimeter" button beside the
+    // fire name, so a shared pm=0 link must actually land in that state —
+    // and must not toggle the layer back ON when it is already hidden.
+    const calls: string[] = [];
+    const actions = {
+      togglePerimeters: () => calls.push('togglePerimeters'),
+    } as unknown as AppState['actions'];
+
+    applyViewState({ perimeters: false }, mkState(), actions);
+    expect(calls).toEqual(['togglePerimeters']);
+
+    const hidden = mkState();
+    (hidden.layers as { perimeters: { visible: boolean } }).perimeters = { visible: false };
+    applyViewState({ perimeters: false }, hidden, actions);
+    expect(calls).toEqual(['togglePerimeters']);
   });
 });
 
