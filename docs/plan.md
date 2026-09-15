@@ -41,7 +41,7 @@ Fire professionals and hotshots need to get up to speed on a wildfire before dep
 ### Design tokens (from fires.cornea.is)
 - Dark: bg `#1a1218`, surface `#241c21`, text `#e8e2e5`, muted `#998e94`, border `#332a2f`, accent `#ffbd5a`, error `#d4572e`. Light: bg `#fdfcf9`, text `#3b1d29`.
 - Fonts: Newsreader (display) + Public Sans (UI), base 15px. 4px radii, hairline borders.
-- Fire styling: perimeter `#CC0000` fill-opacity 0.13 / line 2px (selected 4px); pins teardrop `#FFBB56` (prescribed `#C3B392`); hotspot hexagons — active(24h) `#FF7518`, aging `#FF6467`→`#C05DE1` (7d+).
+- Fire styling: perimeter `#9B4DFF` fill-opacity 0.13 / line 2px (selected 4px); pins teardrop `#FFBB56` (prescribed `#C3B392`); hotspot hexagons — active(24h) `#FF7518`, aging `#FF6467`→`#C05DE1` (7d+).
 - Basemap: fork OpenFreeMap dark (`https://tiles.openfreemap.org/styles/dark`, keyless, OpenMapTiles schema — cornea dark paints port directly: bg `#161313`, water `#292e38`, residential `#5b3140`, labels `#beb3a0`); Carto dark-matter as day-1 fallback.
 - Windy patterns: bottom timeline (play btn, day labels + hour ticks, draggable playhead + tooltip, dim cover right of playhead), layer rail → panel, product dropdown bottom-right, legend gradient bar above timeline.
 

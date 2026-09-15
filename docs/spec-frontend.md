@@ -15,7 +15,7 @@ interface AppStore {
     currentTime: number;            // epoch ms UTC — THE single time state
     domain: [number, number];       // recomputed on view/data change
     playing: boolean;
-    speed: number;                  // model-hours per wall-second (default 2)
+    speed: number;                  // model-hours per wall-second (default 20)
     buffering: boolean;             // playback gated on prefetch
   };
   layers: {
@@ -74,7 +74,7 @@ as `tiles: [template], tileSize: 512`. Legends: `request=GetLegendGraphic&format
 - Hotspots: canvas hexagon uploaded `{sdf:true}`; per-scrub `setFilter(['<=',['get','acq_ts'], t])` + `icon-color` interpolate on `t - acq_ts` (0→`#FF7518`, 1d→`#FF6467`, 7d→`#C05DE1`). `acq_ts` = acq_date + zero-padded HHMM UTC at ingest; `conf_norm` low/nominal/high (MODIS numeric <30/30–79/≥80; VIIRS l/n/h).
 - Spread: `image` source with run bbox corners; frame = `updateImage({url})` (prefetched → atomic, instant).
 - Weather: per-product A/B raster source pair; step = swap layer name on hidden member, wait source loaded, crossfade `raster-opacity` 150 ms, swap roles. `raster-fade-duration: 0`.
-- Selected-fire perimeter: GeoJSON `setData` per snapped version; fill `#CC0000` 0.13, line 2px (4 on hover of a version marker).
+- Selected-fire perimeter: GeoJSON `setData` per snapped version; fill `#9B4DFF` 0.13, line 2px (4 on hover of a version marker).
 
 ## Timeline
 
