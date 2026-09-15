@@ -12,7 +12,7 @@ const SRC = 'rd-perimeter';
 const FILL = 'rd-perimeter-fill';
 const LINE = 'rd-perimeter-line';
 
-const PERIMETER_COLOR = '#CC0000'; // tokens.css --perimeter
+const PERIMETER_COLOR = '#9B4DFF'; // tokens.css --perimeter
 
 const EMPTY_FC: GeoJSON.FeatureCollection = { type: 'FeatureCollection', features: [] };
 

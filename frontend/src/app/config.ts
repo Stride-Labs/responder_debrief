@@ -38,8 +38,13 @@ export function mapStyleDef(theme: 'dark' | 'light', id: string): MapStyleDef {
   return list.find((s) => s.id === id) ?? list[0];
 }
 
-/** Playback speed default: model-hours advanced per wall-clock second. */
-export const DEFAULT_PLAYBACK_SPEED = 10;
+/**
+ * Playback speed default: model-hours advanced per wall-clock second. Paired
+ * with usePlayback's MIN_STEP_MS floor, which clamps the short (hourly) gaps
+ * that make up most frame plans — move the two together or a faster speed is
+ * only felt on the rare multi-hour gap.
+ */
+export const DEFAULT_PLAYBACK_SPEED = 20;
 
 /** Hotspot fetch settings. */
 export const HOTSPOT_LIMIT = 50000;

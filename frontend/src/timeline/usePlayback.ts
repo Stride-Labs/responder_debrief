@@ -2,7 +2,7 @@
  * Playback engine. Frame-index-driven (never wall-clock): the plan is the
  * sorted union of active layers' frame times from the playhead to the domain
  * end; each step's delay is proportional to the model-time gap it covers
- * (1000/speed ms per model-hour, floor 120 ms).
+ * (1000/speed ms per model-hour, floor 60 ms).
  *
  * Spread renders CONTINUOUSLY client-side from archive data (no frame
  * gating, no prefetching — the spread layer decodes and paints itself; its
@@ -22,7 +22,21 @@ import {
 import { setSpreadArchiveBase } from '../api/wmsUrls';
 import { buildFrameTimes } from './framePlan';
 
-const MIN_STEP_MS = 120;
+/**
+ * Fastest cadence the map is asked to repaint at. Frame plans are hourly, and
+ * an hourly gap lands here at any plausible speed, so this floor — not the
+ * speed — is what the eye reads as playback rate most of the time. Changing
+ * DEFAULT_PLAYBACK_SPEED without moving this has no visible effect.
+ */
+export const MIN_STEP_MS = 60;
+
+/**
+ * Wall-clock delay for a step covering `gapHours` of model time at `speed`
+ * model-hours per wall-second, floored at MIN_STEP_MS.
+ */
+export function stepDelayMs(gapHours: number, speed: number): number {
+  return Math.max(MIN_STEP_MS, (gapHours * 1000) / speed);
+}
 
 export function usePlayback(): void {
   const view = useStore((s) => s.view);
@@ -96,7 +110,7 @@ export function usePlayback(): void {
         return;
       }
       const gapHours = (frameTimes[next] - t) / 3600_000;
-      const delayMs = Math.max(MIN_STEP_MS, (gapHours * 1000) / speed);
+      const delayMs = stepDelayMs(gapHours, speed);
       actions.setStepMs(delayMs);
       timer = setTimeout(() => advance(next), delayMs);
     };
