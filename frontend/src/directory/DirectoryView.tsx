@@ -216,7 +216,7 @@ export function DirectoryView() {
     <div className="rd-directory">
       <header className="rd-dir-header">
         <div className="rd-dir-brand">
-          <h1 className="rd-dir-wordmark">Responder Brief</h1>
+          <h1 className="rd-dir-wordmark">Responder Brief 2</h1>
           {/* On-page copy of the meta description: search engines prefer
               prominent prose near the top over footer boilerplate. */}
           <p className="rd-dir-tagline">
