@@ -94,7 +94,7 @@ export function SourcesView() {
         </a>
         <h1>Sources</h1>
         <p className="rd-sources-sub">
-          Incibrief aggregates official interagency data. Everything shown traces back to the
+          oklahoma state brief aggregates official interagency data. Everything shown traces back to the
           sources below — always defer to them for operational decisions.
         </p>
       </header>

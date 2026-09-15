@@ -286,7 +286,7 @@ export function App() {
         // Deep link still resolving (slug → fire needs the fires index):
         // a quiet shell, never a flash of the directory.
         <div className="rd-route-resolving">
-          <span className="rd-route-resolving-word">Responder Brief</span>
+          <span className="rd-route-resolving-word">oklahoma state brief</span>
         </div>
       ) : (
         <ErrorBoundary label="Fire directory">
